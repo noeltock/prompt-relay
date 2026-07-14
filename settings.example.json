@@ -1,0 +1,12 @@
+{
+  "//": "Example ~/.claude/settings.json fragment for prompt-relay. Merge into your own settings; do not clobber.",
+
+  "//model": "Pin your lead model so the choice survives context resets and the harness doesn't silently fall back to another model mid-session. Set to whatever you drive the lead with.",
+  "model": "opus",
+
+  "//permissions": "Optional. If a runaway sub-agent swarm has ever drained your usage, you can hard-cap spawning. Leave this out unless you want the brake.",
+  "permissions": {
+    "//deny-example": "Uncomment to forbid sub-agent spawning entirely (single-model mode).",
+    "deny": []
+  }
+}
