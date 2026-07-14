@@ -1,10 +1,10 @@
 # prompt-relay
 
-> ## 💸 Same output. A fraction of the tokens.
-> Your smartest model should be *deciding*, not *typing*. `prompt-relay` sends the thinking
-> to your best model and the grunt work to cheap ones — a few copy-paste files that quietly cut
-> your coding-agent token bill **~40–60%** and push your usage limits hours further out. No
-> framework, no lock-in.
+## 💸 Same output. A fraction of the tokens.
+Your smartest model should be *deciding*, not *typing*. `prompt-relay` sends the thinking
+to your best model and the grunt work to cheap ones — a few copy-paste files that quietly cut
+your coding-agent token bill **~40–60%** and push your usage limits hours further out. No
+framework, no lock-in.
 
 ## 🗓️ July 14th update — what shaped this version
 The model-routing meta moved *hard* this week. v1 bakes in what people actually proved out — the
