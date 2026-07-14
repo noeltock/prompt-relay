@@ -11,8 +11,9 @@ execute; a strong model advises on the few hard calls. Everything else is detail
 
 ## The roles in full
 - **`lead`** — whatever model your harness is driving. Scoping, architecture, design, security-
-  sensitive code, review synthesis. Runs at a *high* (not maximum) effort tier for almost
-  everything; the top tier is a token furnace, reserve it for one hard reasoning step.
+  sensitive code, review synthesis. Runs at a *low-to-medium* effort tier by default — a strong
+  model at low effort is often the value sweet spot (see Effort discipline) — reserving high for a
+  genuinely hard reasoning step, and never the maximum tier as a default.
 - **`coder-low`** — a fast, cheap executor for fully-specified mechanical work (renames, schema
   fields, tests-from-pattern, translations, pre-approved plans). Decisions must be pre-named.
 - **`coder-high`** — a stronger executor for semi-defined work where the approach is visible but not
@@ -105,6 +106,11 @@ Whoever wrote the code is the worst reviewer of it — a model is blind to its o
 reasoning gaps. Run the correctness review on a **different model, ideally a different vendor**: a
 cross-model pass catches what same-model review rubber-stamps. Keep it advisory (surface findings,
 you decide) and cheap — this is another place a second vendor on a separate quota earns its keep.
+
+**Invoke it deliberately; never leave it always-on.** An auto-review gate that fires on every finish
+can loop — the reviewer flags, the fixer changes, the reviewer flags again — and burn your quota
+fast. Trigger it at real boundaries (before a commit, at the end of a phase), not as a standing hook
+that re-fires on its own output.
 
 **Static review is only half the wall.** A reviewer *reads* code; it never *runs* the app, so it
 can't see runtime or visual failures — a broken route, mobile overflow, a blank lazy-loaded section,

@@ -12,10 +12,10 @@ This core loads every turn; keep it triggers + standing biases only.*
 **Roster → models (EDIT THIS BLOCK; everything below references the ROLE, not the model):**
 | Role | Model (swap for your stack) | Worked example (Claude + Codex) |
 |---|---|---|
-| `lead` | your session model | Opus / Fable — scopes, decides, reviews |
+| `lead` | your session model | Opus at low effort — scopes, decides, reviews |
 | `coder-low` | fast cheap executor | GPT-5.6 Luna via Codex (Sonnet fallback) |
 | `coder-high` | stronger executor for messy/judgment work | GPT-5.6 Terra via Codex, xhigh |
-| `advisor` | strongest reasoner, second opinion only | GPT-5.6 Sol → Fable, two-stage |
+| `advisor` | strongest reasoner, second opinion only | GPT-5.6 Sol → best Claude, two-stage |
 | `qa` | cheap model for QA | Sonnet |
 | `runner` | cheapest for web/transforms | Haiku |
 *(Claude-only? Map `coder-low`/`coder-high` to Sonnet at rising effort and drop the Codex rows.

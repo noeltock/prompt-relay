@@ -6,25 +6,39 @@ to your best model and the grunt work to cheap ones — a few copy-paste files t
 your coding-agent token bill **~40–60%** and push your usage limits hours further out. No
 framework, no lock-in.
 
-## 🗓️ July 14th update — what shaped this version
-The model-routing meta moved *hard* this week. v1 bakes in what people actually proved out — the
-receipts:
+## ⚡ Get started — one paste
+**New here? Paste one prompt into your coding agent and it sets up routing for your exact stack in ~2 minutes.** Drop this into Claude Code, Codex, Cursor — anything that can read a URL and write files:
 
-- **"Sol plans → Luna executes → Sol reviews. 48 hours straight, zero limit hits."** — [@cjzafir](https://x.com/cjzafir/status/2076483843322962341) (♥600)
-- **"Fable orchestrates, Sonnet executes: 96% of the performance at 46% of the cost."** — Anthropic's *own* numbers, via [@LimestoneHQ](https://x.com/LimestoneHQ/status/2076559490850165122)
-- **"Fable 5 runs at *lower* cost per task than Opus 4.8."** — [Cognition / Devin](https://x.com/cognition/status/2076714965344342382) (♥490)
-- **"Frontier model as manager + cheap sidekick = Fable-level output for ~40% less than Opus 4.8."** — [@jeffwang](https://x.com/jeffwang/status/2076770734941073911)
-- **"Orchestrator + executor + 10 sub-agents in one session — ~60% fewer orchestrator tokens."** — [@sairahul1](https://x.com/sairahul1/status/2076724433293861315)
-- **"Fable on *low* effort is the everyday alpha"** — matches the flagship on routine work at a fraction of the cost (spend the dial back up on genuinely hard tasks). — [@morganlinton](https://x.com/morganlinton/status/2076771596908499306) (♥89)
-- **"Forget everything below the flagship's high tier — run a cheap model at higher effort. Same or better, cheaper."** — [@rasbt](https://x.com/rasbt/status/2075573860796436626) (♥4.5k)
-- Same app, three ways: **Luna `$0.37` · Terra `$0.86` · Sol `$1.80`.** Pick your price. — [@melvynx](https://x.com/melvynx/status/2076667363739754647)
+```text
+Install prompt-relay for me. Read the README at
+https://github.com/noeltock/prompt-relay and follow its
+"Install — for an AI agent" section: run the setup wizard — ask which model
+subscriptions I have, how I want to run this, and which sub-agents I want —
+then propose a role→model mapping and, once I confirm, install the config
+into my ~/.claude/. Back up anything you touch; never overwrite my rules.
+```
 
-*The window is open right now: frontier models are briefly cheap to run and usage caps are in
-flux. The people routing well are getting a week of work out of a day's limits — the ones just
-upgrading model tiers are hitting the wall. This repo is that routing, ready to paste.*
+**What this does:** the agent interviews you — which subscriptions you have (Claude, ChatGPT/Codex, Gemini…), how hands-off you want to be, which sub-agents to wire up — then proposes a routing setup tailored to your stack (which model *decides*, which *executes*, which *reviews*) and installs it **only after you confirm**, backing up anything it touches. No framework, no account, nothing written until you approve the plan. Prefer to do it by hand? See [Install — for a human](#install--for-a-human) below.
 
-> <sub>Community-reported figures from public posts — directional, not benchmarks. Your mileage
-> depends on your stack. The architecture below is the point; the numbers are why it caught on.</sub>
+## 🗓️ The receipts (updated July 15)
+This isn't a hot take — the labs and the heaviest builders are publishing the numbers. The best of
+what's landed:
+
+**The labs' own benchmarks**
+- **Anthropic:** *"Fable 5 orchestrates, Sonnet 5 executes — 96% of the performance for 46% of the cost."* — via [@LimestoneHQ](https://x.com/LimestoneHQ/status/2076559490850165122)
+- **Anthropic (workshop):** *"We were spending $90 running agents on Opus. Sonnet 5 did the same thing for $20 — Opus-class coding at a quarter of the cost."* — via [@0xMovez](https://x.com/0xMovez/status/2077043573430636985)
+- **Artificial Analysis:** the frontier models now sit on *"a new Pareto frontier of intelligence vs cost per task"* — the second-best model is a third of the price of the best. Routing is just picking your point on that curve. — [@ArtificialAnlys](https://x.com/ArtificialAnlys/status/2075268970492657905) (♥2k)
+- **Cognition (Devin):** adding a cheap sidekick made it *"smarter and, surprisingly, cheaper"* — the sidekick carries context across calls so the lead never re-explains. — [@joon_h_lee](https://x.com/joon_h_lee/status/2076714221837173097) (♥811)
+
+**The heaviest builders**
+- [@rasbt](https://x.com/rasbt/status/2075573860796436626) (♥4.6k): *"Use a cheap model at higher effort — same or better performance, cheaper. Forget everything below the flagship's high tier."*
+- [@cjzafir](https://x.com/cjzafir/status/2065104422762684745) (♥2.8k): *"Flagship to plan, a cheap model to execute, flagship to review. That's it. It works."* — and [48 hours on this flow, zero limit hits](https://x.com/cjzafir/status/2076483843322962341).
+- [@jeffwang](https://x.com/jeffwang/status/2076770734941073911): *"Manager + cheap sidekick = flagship-level output for ~40% less than Opus 4.8."*
+
+*The window is open right now: OpenAI just [reset all limits again at 8M users](https://x.com/thsottiaux/status/2077114635308986427) (still no 5-hour cap), and Anthropic's next flagship lands this week. Route well and you get a week of work out of a day's limits — the ones just upgrading model tiers hit the wall. This repo is that routing, ready to paste.*
+
+> <sub>Lab-published and community-reported figures — directional, not a benchmark suite. Your
+> mileage depends on your stack. The architecture below is the point; the numbers are why it caught on.</sub>
 
 ## Why this exists
 - **One principle:** an expensive, smart model **decides** (scope, architecture, review); cheap
@@ -67,7 +81,7 @@ so you start measuring your own routing from day one instead of trusting inherit
 ## The roles
 | Role | Does | Example model (edit) |
 |---|---|---|
-| `lead` | scopes, decides, reviews — your session model | Opus / Fable |
+| `lead` | scopes, decides, reviews — your session model | Opus (low effort) |
 | `coder-low` | fully-specified mechanical work | a cheap fast model (Sonnet, or a cheap Codex model) |
 | `coder-high` | messy diffs, judgment among patterns | a stronger model at higher effort |
 | `advisor` | second opinion, advisory only | your strongest reasoner |
@@ -86,9 +100,28 @@ Do not clobber existing config; append and back up.*
 
 1. **Pick the target.** Ask the user: global (`~/.claude/`) or a single project (`./.claude/`)?
    Default to global if they don't care.
-2. **Gather the model choices.** Ask the user five short questions and record the answers:
-   `lead`, `coder-low`, `coder-high`, `advisor`, `qa` (runner defaults to the cheapest model
-   they have). If they're unsure, propose the worked example in `CLAUDE.md` and let them confirm.
+2. **Run the setup wizard — interview, then propose.** Don't just ask for six model names; most
+   people don't know what to pick. Interview first:
+   - **What do you have?** Which subscriptions / providers — Claude (Max/Pro), ChatGPT
+     (Plus/Pro/Business) + Codex, Gemini, an API key, or just one of these?
+   - **How do you want to run it?** Simplest (single model, no sub-agents), Claude-only multi-agent,
+     or cross-vendor cost-optimized (needs two providers on separate quotas).
+   - **How hands-off?** Comfortable with autonomous cross-vendor execution + guardrails, or keep it
+     conservative for now?
+
+   Then **propose a role→model mapping** from the table below that fits their access, show it back,
+   and let them adjust before you write anything. `runner` defaults to their cheapest model.
+
+   | You have | lead | coder-low | coder-high | advisor | qa | runner |
+   |---|---|---|---|---|---|---|
+   | **Claude only** (Max/Pro) | Opus (low) | Haiku | Sonnet (high) | Opus (high) | Haiku | Haiku |
+   | **Claude + ChatGPT/Codex** | Opus (low) | Codex cheap tier | Codex mid tier (xhigh) | strong OpenAI → best Claude | Sonnet | Haiku |
+   | **ChatGPT/Codex only** | best model (medium) | cheap tier (high) | mid tier (xhigh) | flagship (high) | cheap tier | cheap tier |
+   | **One sub / simplest** | your best model (low) | *(spawn inline)* | *(inline)* | your best (high) | your cheapest | your cheapest |
+   | **API keys only** | best model (low) | cheapest capable | mid, higher effort | best (high) | cheapest | cheapest |
+
+   Starting points, not gospel — confirm each. If they choose "simplest", skip the agent files
+   (single-file mode) and stop after the core is installed.
 3. **Install the routing core.** If the target `CLAUDE.md` exists, back it up
    (`CLAUDE.md.bak-<date>`) and **append** the `## Model routing & delegation` section from this
    repo's `CLAUDE.md` under a clearly-marked block — never overwrite the user's existing rules. If
