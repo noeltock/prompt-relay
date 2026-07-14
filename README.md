@@ -20,9 +20,8 @@ into my ~/.claude/. Back up anything you touch; never overwrite my rules.
 
 **What this does:** the agent interviews you — which subscriptions you have (Claude, ChatGPT/Codex, Gemini…), how hands-off you want to be, which sub-agents to wire up — then proposes a routing setup tailored to your stack (which model *decides*, which *executes*, which *reviews*) and installs it **only after you confirm**, backing up anything it touches. No framework, no account, nothing written until you approve the plan. Prefer to do it by hand? See [Install — for a human](#install--for-a-human) below.
 
-## 🗓️ The receipts (updated July 15)
-This isn't a hot take — the labs and the heaviest builders are publishing the numbers. The best of
-what's landed:
+## 🔮 Current Edge
+Some of the 673+ tweets analysed:
 
 **The labs' own benchmarks**
 - **Anthropic:** *"Fable 5 orchestrates, Sonnet 5 executes — 96% of the performance for 46% of the cost."* — via [@LimestoneHQ](https://x.com/LimestoneHQ/status/2076559490850165122)
@@ -164,7 +163,3 @@ Do not clobber existing config; append and back up.*
 - **Add a role:** give it a row in the routing table and (optionally) an `agents/<role>.md` file.
 - **Trim:** the core is meant to stay lean — it loads every turn. Push detail into
   `references/routing.md`, not the core.
-
-## Credit
-Distilled from a real Claude + Codex mixed-stack setup and a review of production routing files.
-Adapt freely.
