@@ -1,6 +1,9 @@
 # prompt-relay
 
-## 💸 Same output. A fraction of the tokens.
+<p align="center">
+  <img src="assets/hero.png" alt="A lead agent fanning work out to parallel sub-agents, each reporting its own token cost" width="100%">
+</p>
+
 Your smartest model should be *deciding*, not *typing*. `prompt-relay` sends the thinking
 to your best model and the grunt work to cheap ones — a few copy-paste files that quietly cut
 your coding-agent token bill **~40–60%** and push your usage limits hours further out. No
