@@ -13,7 +13,8 @@ framework, no lock-in.
 **New here? Paste one prompt into your coding agent and it sets up routing for your exact stack in ~2 minutes.** Drop this into Claude Code, Codex, Cursor — anything that can read a URL and write files:
 
 ```text
-Install prompt-relay for me. Read the README at https://github.com/noeltock/prompt-relay and follow its "Install — for an AI agent" section: run the setup wizard — ask which model subscriptions I have, how I want to run this, and which sub-agents I want — then propose a role→model mapping and, once I confirm, install the config into my ~/.claude/. Back up anything you touch; never overwrite my rules.```
+Install prompt-relay for me. Read the README at https://github.com/noeltock/prompt-relay and follow its "Install — for an AI agent" section: run the setup wizard — ask which model subscriptions I have, how I want to run this, and which sub-agents I want — then propose a role→model mapping and, once I confirm, install the config into my ~/.claude/. Back up anything you touch; never overwrite my rules.
+```
 
 **What this does:** the agent interviews you — which subscriptions you have (Claude, ChatGPT/Codex, Gemini…), how hands-off you want to be, which sub-agents to wire up — then proposes a routing setup tailored to your stack (which model *decides*, which *executes*, which *reviews*) and installs it **only after you confirm**, backing up anything it touches. No framework, no account, nothing written until you approve the plan. Prefer to do it by hand? See [Install — for a human](#install--for-a-human) below.
 
