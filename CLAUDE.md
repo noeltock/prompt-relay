@@ -23,8 +23,15 @@ This core loads every turn; keep it triggers + standing biases only.*
 
 **Standing biases:** the `lead` scopes / decides / reviews; execution and verification delegate
 down, even for small tasks. Judge the output, not the price tag — redo mediocre cheap-tier work
-on a stronger model without asking. Long sessions: scout-first (one exploration brief, not a lead
-grep chain), cap every sub-agent's output length, batch shell work — turn count drives cost.
+on a stronger model without asking. Long sessions: scout-first, cap sub-agent output, batch shell
+work — detail in `references/routing.md`.
+
+**The bright line:** reading a file or running one command to judge something a delegate already
+returned is normal — that's the job. What isn't: a *second* inspection command run just to
+understand more, a grep whose real purpose is scoping a spec rather than confirming one claim, or
+hand-parsing a sub-agent's raw output instead of reading its summary. Each feels like judging in
+the moment; each is gathering that should have been delegated. Notice the pattern, not just the
+excuse.
 
 **Route by what's MISSING from the task:**
 | Task class | Role | Why |
@@ -44,11 +51,14 @@ grep chain), cap every sub-agent's output length, batch shell work — turn coun
 > upgrade (persistent contract, cheaper re-use), not a requirement.
 
 **Escalation ladder (one rung at a time):** inline → `coder-low` → `coder-high` → `lead`.
-Promote one rung only when the agent's output misses the bar on review. A `BLOCKER:` is NOT a
-promotion — answer it and re-spawn the *same* role with the decision included. Never take over
-work a spec'd handoff covers — building it yourself is the tell you skipped the handoff. Large
-UI/server builds → chunk into 2–3 fully-specified pieces with a review checkpoint between.
-(`advisor` is orthogonal to this ladder — it points *up* and never executes.)
+Promote one rung only when the agent's output misses the bar on review. A `BLOCKER: decision` is
+NOT a promotion — answer it and re-spawn the *same* role with the decision included. A
+`BLOCKER: environment` is different: it's not waiting on a call only the lead can make, it's the
+environment itself being broken (no DNS, missing CLI, denied permission) — fix the environment (or
+accept the risk) and re-spawn, don't treat it as a decision to answer. Never take over work a
+spec'd handoff covers — building it yourself is the tell you skipped the handoff. Large UI/server
+builds → chunk into 2–3 fully-specified pieces with a review checkpoint between. (`advisor` is
+orthogonal to this ladder — it points *up* and never executes.)
 
 **The spec test — BAD/GOOD:**
 - 🚫 the lead has the full spec (markup, classes, copy) and writes the 200-line view itself.
@@ -73,4 +83,5 @@ CLI, foreground-and-wait (a backgrounded worker can wedge with no liveness signa
 executor's model/effort explicitly — an unpinned call silently runs the vendor's default tier.
 
 → advisor two-stage rationale, cross-vendor (Codex) setup, warm-thread reuse, context-cost
-discipline, per-role guardrail detail: `references/routing.md`
+discipline, evidence gates, environment vs decision blockers, session circuit breaker, per-role
+guardrail detail: `references/routing.md`

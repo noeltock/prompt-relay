@@ -49,6 +49,9 @@ Some of the 673+ tweets analysed:
   limits you hit hours later, not minutes.
 - **Distilled from real use.** Pulled from a working Claude + Codex mixed stack and a review of
   production routing files — not theory.
+- **Ships a learning loop, not just doctrine.** Prose in `CLAUDE.md` competes with recency every
+  turn and loses; a repeat finding gets promoted to `learned/known-failures.md` and printed before
+  every commit instead of trusted to memory.
 - **It installs itself.** Hand this README to a coding agent and say *"install prompt-relay"*
   — the steps below are written for it to follow.
 
@@ -65,6 +68,10 @@ prompt-relay/
 ├── logger/                # starter routing log — measure routing to tune it (day one)
 │   ├── log-delegation.sh  # SubagentStop hook: one JSONL row per delegation
 │   └── README.md          # schema, wiring, and the query that tunes your table
+├── learned/known-failures.md  # the learning-loop checklist — starts empty, you fill it
+├── hooks/                 # the learning-loop hook — a repeat finding becomes a guaranteed print
+│   ├── pre-commit-checklist.sh  # PreToolUse hook: prints known-failures.md before `git commit`
+│   └── README.md          # wiring, and how to turn a line into a real gate
 └── settings.example.json  # optional model pin + spawn brake
 ```
 
@@ -138,7 +145,11 @@ Do not clobber existing config; append and back up.*
    `logger/README.md`, so the user measures their own routing from day one. Adjust the hook's `jq`
    field paths to the user's harness payload; don't claim it's logging until you've confirmed a row
    appends.
-9. **Verify and report.** List every file created/appended with its path, echo the filled-in
+9. **Optional learning-loop hook.** Offer to install `learned/known-failures.md` (empty starter) and
+   wire `hooks/pre-commit-checklist.sh` as a `PreToolUse` hook per `hooks/README.md`. This is the
+   mechanism that turns a twice-seen fail from the routing log into a printed reminder instead of a
+   third repeat — worth installing alongside the logger, not instead of it.
+10. **Verify and report.** List every file created/appended with its path, echo the filled-in
    Roster table back to the user, and state which adoption tier is active (single-file vs
    agents-pack). Do not claim success for a step you skipped.
 
@@ -151,6 +162,9 @@ Do not clobber existing config; append and back up.*
 4. (Optional) Copy `agents/*.md` into `~/.claude/agents/` and set each `model:`. Skip for
    single-model mode.
 5. (Optional) Merge `settings.example.json` into your `settings.json` to pin the lead model.
+6. (Optional) Copy `learned/known-failures.md` and `hooks/pre-commit-checklist.sh`, then wire the
+   `PreToolUse` hook per `hooks/README.md`. This is the learning-loop mechanism: a finding that
+   recurs twice in the routing log gets a line here and prints before every commit from then on.
 
 ## Customising
 - **Swap models:** edit the Roster block in `CLAUDE.md` and the `model:` line in each agent file.
