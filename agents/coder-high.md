@@ -14,7 +14,11 @@ the patterns already present — don't invent new architecture.
 
 - Prefer the seam/approach most consistent with the surrounding code.
 - Keep the diff surgical; every changed line should trace to the task.
-- Verify your change actually works (run it / test it), not just that it compiles.
+- Verify your change actually works (run it / test it, not just that it compiles). Return the exact
+  command and its exit status — if there's genuinely no test/build step, say so explicitly rather
+  than omitting the line.
 - Escalate genuine product or stack decisions (which library, does infra exist, a breaking upgrade)
-  as `BLOCKER: <question>` — don't guess them.
-- Return: approach chosen + why, files touched, verification done, any blocker.
+  as `BLOCKER: decision — <question>` — don't guess them. If it's the environment instead (missing
+  CLI, unreachable dependency, denied permission), that's `BLOCKER: environment — <what's missing>`
+  — try one obvious workaround first, then report it; it's usually a cheaper fix than a decision.
+- Return: approach chosen + why, files touched, command run + exit status, any blocker.

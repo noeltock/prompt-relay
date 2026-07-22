@@ -1,5 +1,5 @@
 {
-  "//": "Example ~/.claude/settings.json fragment for prompt-relay. Merge into your own settings; do not clobber.",
+  "//": "Example ~/.claude/settings.json fragment for prompt-relay. Merge into your own settings; do not clobber — this is one combined example covering BOTH hooks (hooks/README.md and logger/README.md each showed a separate 'hooks' fragment before; pasting both naively would clobber one with the other since JSON object keys don't merge that way).",
 
   "//model": "Pin your lead model so the choice survives context resets and the harness doesn't silently fall back to another model mid-session. Set to whatever you drive the lead with.",
   "model": "opus",
@@ -8,5 +8,17 @@
   "permissions": {
     "//deny-example": "Uncomment to forbid sub-agent spawning entirely (single-model mode).",
     "deny": []
+  },
+
+  "//hooks": "Combined fragment for both prompt-relay hooks — pre-commit-checklist.sh (PreToolUse on Bash) and log-delegation.sh (SubagentStop). Replace /ABSOLUTE/PATH/prompt-relay with your actual clone path.",
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [ { "type": "command",
+        "command": "/ABSOLUTE/PATH/prompt-relay/hooks/pre-commit-checklist.sh" } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command",
+        "command": "/ABSOLUTE/PATH/prompt-relay/logger/log-delegation.sh" } ] }
+    ]
   }
 }
