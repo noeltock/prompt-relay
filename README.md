@@ -4,126 +4,25 @@
   <img src="assets/hero.png" alt="A lead agent fanning work out to parallel sub-agents, each reporting its own token cost" width="100%">
 </p>
 
-Your smartest model should be *deciding*, not *typing*. `prompt-relay` sends the thinking to your
-best model and the grunt work to cheap ones — a few copy-paste files. No framework, no lock-in.
+**Your smartest model should be *deciding*, not *typing*.**
 
-**Same architecture, opposite economics, depending on where you run it:**
-- **On Claude Code** it quietly cuts your coding-agent token bill **~40–60%** and pushes your usage
-  limits hours further out. The lead re-reads its own bloated transcript as cache every turn, so
-  moving work off it shrinks the bill.
-- **On Codex** it does the opposite job. Fan-out is **on by default** and subagents inherit your
-  lead model unless you pin them, so routing there is a spend **ceiling**, not a discount. No saving
-  is benchmarked on that harness, and the public evidence points the other way.
-  **→ Codex users: start at [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md), not the install
-  steps below.**
+`prompt-relay` is a copy-paste routing template for coding agents: your expensive model decides,
+cheap models execute, a strong one advises. Six roles, a few files. No framework, no lock-in.
 
-## ⚡ Get started — one paste
-**New here? Paste one prompt into your coding agent and it sets up routing for your exact stack in ~2 minutes.** Drop this into Claude Code, Codex, Cursor — anything that can read a URL and write files:
+- **On Claude Code it cuts your token bill ~40–60%** and pushes usage limits hours further out.
+- **On Codex it's your spend cap** — fan-out is on by default there and inherits your lead model,
+  so the same roles pin it down instead of thinning it out.
 
-> ```Install prompt-relay for me. Read the README at https://github.com/noeltock/prompt-relay and follow its "Install — for an AI agent" section: run the setup wizard — ask which model subscriptions I have, how I want to run this, and which sub-agents I want — then propose a role→model mapping and, once I confirm, install the config into the right place for the harness you are running in (Claude Code reads ~/.claude/ and CLAUDE.md; other harnesses do not — ask me if unsure rather than guessing). Back up anything you touch; never overwrite my rules.```
+Paste this into your agent — it interviews you, proposes a role→model map, and installs only after
+you approve:
 
-**What this does:** the agent interviews you — which subscriptions you have (Claude, ChatGPT/Codex, Gemini…), how hands-off you want to be, which sub-agents to wire up — then proposes a routing setup tailored to your stack (which model *decides*, which *executes*, which *reviews*) and installs it **only after you confirm**, backing up anything it touches. No framework, no account, nothing written until you approve the plan. Prefer to do it by hand? See [Install — for a human](#install--for-a-human) below.
+> ```Install prompt-relay: read https://github.com/noeltock/prompt-relay/blob/main/docs/install.md, propose a role→model mapping for my stack, and install only after I confirm. Back up anything you touch; never overwrite my rules.```
 
-## 🔮 The evidence
-Two separate questions — *does tier routing work?* and *what does delegation cost on my harness?* —
-with very different amounts of evidence behind them. Sorted strongest-first, and labelled.
+## How it works
+One principle: an expensive, smart model **decides** (scope, architecture, review); cheap models
+**execute**; a strong model **advises** on the few hard calls. Everything routes by *role*, not
+model name, so it survives any rename or swap:
 
-**Verified first-party (dated, falsifiable).** Checked directly against `codex-cli 0.145.0`:
-`multi_agent` ships **stable / true** — fan-out is on by default. `multi_agent_v2` exists,
-stable / false. The `[agents]` config keys (`default_subagent_model`,
-`default_subagent_reasoning_effort`, `max_concurrent_threads_per_session`) are present, and an
-unset `default_subagent_model` inherits the lead model with no warning. `max_depth` carries the
-in-binary note *"(V1 only; ignored by V2)"* — a depth cap set under v2 silently does nothing.
-Re-check on version bumps; this surface moves. Method and caveats in
-[`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md).
-
-**Reported by practitioners (not benchmarks — reports).** On Codex, the cost failure mode:
-- [@LexnLin](https://x.com/LexnLin/status/2079073513017929918) (2026-07-20): *"Accidentally ran the
-  codex goal on GPT 5.6 Sol MAX instead of medium overnight. And now I have 8% of my weekly Codex
-  limit left."*
-- [@dexhorthy](https://x.com/dexhorthy/status/2075805253245849872) on the trigger: *"if you even say
-  the word subagent anywhere in a prompt, sol will start using subagents for everything."*
-- [u/kepners](https://www.reddit.com/r/codex/comments/1v20jzo/agents_in_codex_when_running_in_max_or_pro_no/)
-  (2026-07-20), on burning a 20x Max plan, and
-  [u/Agreeable_Parsnip_65](https://www.reddit.com/r/codex/comments/1v3x1s4/excessive_token_consumption_resolved/)
-  (2026-07-22), who fixed it with exactly the `default_subagent_model` /
-  `max_concurrent_threads_per_session` pins this profile recommends.
-- [@evi77ain](https://x.com/evi77ain/status/2079319256492359764) (2026-07-20) reports the cheap tier
-  may not be spawnable at all: *"Sol and Terra are marked as V2-compatible, while Luna, for some
-  reason, is still marked as V1. So `spawn_agent` simply filters it out."* Two Reddit reports agree.
-  **Unconfirmed against the binary** — if it holds, pin a tier that actually spawns and check the log.
-
-On tier routing generally: [@rasbt](https://x.com/rasbt/status/2075573860796436626) — *"Use a cheap
-model at higher effort — same or better performance, cheaper"*;
-[@LimestoneHQ](https://x.com/LimestoneHQ/status/2076559490850165122) relaying Anthropic's
-orchestrate/execute split at *96% of performance for 46% of cost*;
-[@cjzafir](https://x.com/cjzafir/status/2076483843322962341) on plan/execute/review holding up over
-long sessions.
-
-**What is *not* established.** These reports measure **model-tier arbitrage** (a cheaper model doing
-the same job) — which is only half of what this template does. Public evidence for the
-*delegation-architecture* half is thin, and some of it cuts the other way: vendor cost studies are
-run on the vendor's own IDE-locked model and can't be replicated externally; published router
-benchmarks have found routers failing to beat a simple baseline; and a cheaper orchestrator has been
-observed driving workers to burn *more* total tokens, which no routing table captures. Treat the
-architecture as the durable idea and every number here as directional.
-
-## Why this exists
-- **One principle:** an expensive, smart model **decides** (scope, architecture, review); cheap
-  models **execute**; a strong model **advises** on the few hard calls.
-- **It's a template, not a framework.** Copy a few files, swap in your models, delete what you
-  don't use. Nothing to install, nothing to import.
-- **Vendor-agnostic by design.** Everything routes by *role*, not model name — so it survives any
-  model rename or swap. Three shapes are covered: Claude-only, Claude-lead with OpenAI executors,
-  and **Codex-lead** (its own profile, because the economics there invert).
-- **Honest about which harness it pays on.** The role table, escalation ladder and effort discipline
-  are portable. The *savings* are not — they come from harness mechanics, and this repo says so
-  rather than selling one number to everybody.
-- **Two adoption tiers.** Works as a single copy-paste file today; scale up to named, reusable
-  sub-agents when you want the full multi-agent version.
-- **Keeps your best model lean.** Less raw evidence in its context = lower cost per turn and usage
-  limits you hit hours later, not minutes.
-- **Distilled from real use.** Pulled from a working Claude + Codex mixed stack and a review of
-  production routing files — not theory.
-- **Ships a learning loop, not just doctrine.** Prose in `CLAUDE.md` competes with recency every
-  turn and loses; a repeat finding gets promoted to `learned/known-failures.md` and printed before
-  every commit instead of trusted to memory.
-- **It installs itself.** Hand this README to a coding agent and say *"install prompt-relay"*
-  — the steps below are written for it to follow.
-
-## What's in the box
-```
-prompt-relay/
-├── CLAUDE.md              # the routing core (Claude) — paste into your CLAUDE.md
-├── profiles/
-│   └── codex-AGENTS.md    # ← START HERE IF YOU RUN CODEX. Native fan-out, config
-│                          #   pins, and the three silent-failure modes
-├── references/routing.md  # deep mechanics + the hard-won rules & failure-mode table
-├── agents/                # optional named sub-agents (the multi-agent tier, Claude)
-│   ├── coder-low.md       # fast cheap executor — fully-specified mechanical work
-│   ├── coder-high.md      # stronger executor — judgment among visible patterns
-│   ├── advisor.md         # read-only second-opinion consult
-│   └── qa.md              # runs your check matrix, returns a short pass/fail
-├── logger/                # spawn + model audit trail — catches an unpinned executor
-│   ├── log-delegation.sh        # SubagentStop hook (Claude)
-│   ├── log-delegation-codex.sh  # SubagentStop hook (Codex) — not optional there
-│   └── README.md          # schema, wiring, and what the payload does NOT carry
-├── learned/known-failures.md  # the learning-loop checklist — starts empty, you fill it
-├── hooks/                 # the learning-loop hook — a repeat finding becomes a guaranteed print
-│   ├── pre-commit-checklist.sh  # PreToolUse hook: prints known-failures.md before `git commit`
-│   └── README.md          # wiring, and how to turn a line into a real gate
-└── settings.example.json  # optional model pin + spawn brake
-```
-
-The **hard-won rules** — the operational intricacies of running cheap executors and cross-vendor
-delegation (foreground-and-wait, scoped kills, never-foreground-a-server, cross-model review, chunk
-before the wall, and more) — live in `references/routing.md`, each distilled to *the failure it
-prevents* in one table. Not the war stories; the rules the war stories produced. And `logger/` ships
-so you can see your own fan-out from day one — which role, on which model — instead of trusting that
-your pins took effect. Read its README for what the hook payload genuinely carries before you build
-a cost claim on it.
-
-## The roles
 | Role | Does | Example model (edit) |
 |---|---|---|
 | `lead` | scopes, decides, reviews — your session model | Opus (low effort) |
@@ -133,91 +32,49 @@ a cost claim on it.
 | `qa` | runs tests/checks, reports pass/fail | a cheap model |
 | `runner` | web / transforms / dumb sweeps | the cheapest model |
 
-**Two adoption tiers.** The routing table works as a single file — if you never create the
-`agents/*.md`, each role just means "spawn a sub-agent with this model + a one-line instruction."
-Adding the agent files is an upgrade: persistent, reusable contracts.
+Works at two tiers: a single copy-paste file today, or named reusable sub-agents when you want the
+full multi-agent version. Copy what you need, delete the rest.
+
+## On Claude Code
+Delegation here is a **discount**: the lead re-reads its own transcript as cache every turn, so
+moving execution off it is what shrinks the bill — that's where the ~40–60% comes from. Spawning is
+explicit opt-in, so nothing fans out unless you asked.
+
+- **Start:** paste [`CLAUDE.md`](CLAUDE.md)'s routing section into your `~/.claude/CLAUDE.md` and
+  edit the Roster block.
+- **Level up:** copy [`agents/`](agents/) for named sub-agents,
+  [`settings.example.json`](settings.example.json) to pin the lead model.
+- **Full steps:** [`docs/install.md`](docs/install.md) — agent-runnable or by hand.
+
+## On Codex
+Same roles, opposite economics: multi-agent is **native and on by default**, and an unpinned
+subagent silently inherits your lead's expensive model. Here the routing is a **spend cap** — pin
+the cheap tier, bound the fan-out, and watch the log to confirm the pins took. No saving is
+benchmarked on this harness; containment is the product.
+
+- **Start (and finish):** [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md) — config pins for
+  `~/.codex/config.toml`, the roster mapped to Codex's built-in roles, and three silent-failure
+  modes, each verified or labelled otherwise.
+- **Not optional:** the [`logger/`](logger/) Codex hook — the only way to notice a runaway fan-out
+  before the bill.
+
+*(Mixed stack — Claude lead, Codex executors? That's the worked example in the
+[install guide](docs/install.md) and `references/routing.md`.)*
+
+## What you copy
+| You want | Copy | Notes |
+|---|---|---|
+| The routing core | `CLAUDE.md` *(Claude)* or `profiles/codex-AGENTS.md` *(Codex)* | the one required piece; edit only the Roster block |
+| Named sub-agents | `agents/*.md` | optional upgrade — persistent role contracts |
+| The deep mechanics | `references/routing.md` | hard-won rules, each distilled to the failure it prevents |
+| Spawn audit + learning loop | `logger/`, `hooks/`, `learned/` | one JSONL row per delegation; a twice-seen failure becomes a printed pre-commit check |
+
+## The receipts
+Verified first-party where possible (e.g. Codex fan-out defaults checked against the
+`codex-cli 0.145.0` binary), practitioner reports labelled as reports, and one honest gap: nobody —
+including us — has benchmarked the delegation half in public. The full tiered ledger with every
+handle and link: [`docs/evidence.md`](docs/evidence.md).
 
 ---
 
-## Install — for an AI agent
-*If you are an AI coding agent asked to "install prompt-relay", follow these steps exactly.
-Do not clobber existing config; append and back up.*
-
-1. **Pick the target.** Ask the user: global (`~/.claude/`) or a single project (`./.claude/`)?
-   Default to global if they don't care.
-2. **Run the setup wizard — interview, then propose.** Don't just ask for six model names; most
-   people don't know what to pick. Interview first:
-   - **What do you have?** Which subscriptions / providers — Claude (Max/Pro), ChatGPT
-     (Plus/Pro/Business) + Codex, Gemini, an API key, or just one of these?
-   - **How do you want to run it?** Simplest (single model, no sub-agents), Claude-only multi-agent,
-     or cross-vendor cost-optimized (needs two providers on separate quotas).
-   - **How hands-off?** Comfortable with autonomous cross-vendor execution + guardrails, or keep it
-     conservative for now?
-
-   Then **propose a role→model mapping** from the table below that fits their access, show it back,
-   and let them adjust before you write anything. `runner` defaults to their cheapest model.
-
-   | You have | lead | coder-low | coder-high | advisor | qa | runner |
-   |---|---|---|---|---|---|---|
-   | **Claude only** (Max/Pro) | Opus (low) | Haiku | Sonnet (high) | Opus (high) | Haiku | Haiku |
-   | **Claude + ChatGPT/Codex** | Opus (low) | Codex cheap tier | Codex mid tier (xhigh) | strong OpenAI → best Claude | Sonnet | Haiku |
-   | **ChatGPT/Codex only** ([see profile](profiles/codex-AGENTS.md)) | Sol (medium) | Luna (high) | Terra (xhigh) | Sol (high) | Luna (low) | Luna (low) |
-   | **One sub / simplest** | your best model (low) | *(spawn inline)* | *(inline)* | your best (high) | your cheapest | your cheapest |
-   | **API keys only** | best model (low) | cheapest capable | mid, higher effort | best (high) | cheapest | cheapest |
-
-   Starting points, not gospel — confirm each. If they choose "simplest", skip the agent files
-   (single-file mode) and stop after the core is installed.
-
-   **Codex-only users: stop here** and follow [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md)
-   (as flagged at the top). Steps 3-10 below install into `~/.claude/`, which Codex never reads, and
-   the cost story inverts on that harness — the profile covers the config pins, three silent-failure
-   modes, and why the routing there caps spend rather than saving it.
-3. **Install the routing core.** If the target `CLAUDE.md` exists, back it up
-   (`CLAUDE.md.bak-<date>`) and **append** the `## Model routing & delegation` section from this
-   repo's `CLAUDE.md` under a clearly-marked block — never overwrite the user's existing rules. If
-   it doesn't exist, create it from this repo's `CLAUDE.md`. Fill the Roster block with the answers
-   from step 2.
-4. **Install the reference.** Copy `references/routing.md` to `<target>/references/routing.md`.
-   Confirm the pointer at the bottom of the routing core resolves to that path.
-5. **Install the agents (optional but recommended).** Copy `agents/*.md` to `<target>/agents/`.
-   In each file's frontmatter, replace the `model:` placeholder with the matching answer from step
-   2. If the user wants single-model mode, skip this step — the core still works inline.
-6. **Cross-vendor note.** If any executor answer is a non-Claude model (e.g. an OpenAI/Codex
-   model), tell the user they need the `openai/codex-plugin-cc` plugin installed, and point them at
-   the "Cross-vendor execution" section of `references/routing.md`. Do NOT attempt to install that
-   plugin yourself unless asked.
-7. **Optional settings.** Offer to merge `settings.example.json` into `<target>/settings.json`
-   (pins the `lead` model so it survives context resets). Merge, don't clobber.
-8. **Optional routing log.** Offer to install `logger/` and wire the `SubagentStop` hook per
-   `logger/README.md`, so the user measures their own routing from day one. Adjust the hook's `jq`
-   field paths to the user's harness payload; don't claim it's logging until you've confirmed a row
-   appends.
-9. **Optional learning-loop hook.** Offer to install `learned/known-failures.md` (empty starter) and
-   wire `hooks/pre-commit-checklist.sh` as a `PreToolUse` hook per `hooks/README.md`. This is the
-   mechanism that turns a twice-seen fail from the routing log into a printed reminder instead of a
-   third repeat — worth installing alongside the logger, not instead of it.
-10. **Verify and report.** List every file created/appended with its path, echo the filled-in
-   Roster table back to the user, and state which adoption tier is active (single-file vs
-   agents-pack). Do not claim success for a step you skipped.
-
-## Install — for a human
-1. Copy `CLAUDE.md`'s routing section into your `~/.claude/CLAUDE.md` (or a project
-   `.claude/CLAUDE.md`).
-2. Edit **only the Roster block** — put your models next to each role. Everything else references
-   the role, so that's the one place you touch.
-3. Copy `references/routing.md` next to it (`~/.claude/references/routing.md`).
-4. (Optional) Copy `agents/*.md` into `~/.claude/agents/` and set each `model:`. Skip for
-   single-model mode.
-5. (Optional) Merge `settings.example.json` into your `settings.json` to pin the lead model.
-6. (Optional) Copy `learned/known-failures.md` and `hooks/pre-commit-checklist.sh`, then wire the
-   `PreToolUse` hook per `hooks/README.md`. This is the learning-loop mechanism: a finding that
-   recurs twice in the routing log gets a line here and prints before every commit from then on.
-
-## Customising
-- **Swap models:** edit the Roster block in `CLAUDE.md` and the `model:` line in each agent file.
-  Nothing else references a model name.
-- **Claude-only:** map `coder-low`/`coder-high` to your cheaper Claude models at rising effort;
-  delete the Codex references.
-- **Add a role:** give it a row in the routing table and (optionally) an `agents/<role>.md` file.
-- **Trim:** the core is meant to stay lean — it loads every turn. Push detail into
-  `references/routing.md`, not the core.
+*Ready? Paste the one-liner at the top, or start at [`docs/install.md`](docs/install.md).*
