@@ -35,6 +35,20 @@ cache every turn, and that re-read — not the thinking — dominates cost. Keep
 (screenshots, test logs, large file reads, verbose sub-agent transcripts) OUT of the lead: a
 disposable runner turns raw → verdict and dies; the lead consumes the verdict.
 
+**That mechanism is harness-specific, and you have to check yours before assuming the saving.** The
+argument above rests on two properties of the harness, not on the architecture: (1) the lead's
+transcript is re-read as cache every turn, so *shrinking it* is what saves money; and (2) spawning
+is explicit opt-in, so a delegation only happens when you asked for one. Claude Code has both, which
+is why delegating there is a discount.
+
+Where a harness spawns by default, or where a subagent inherits the lead's model unless you pin it,
+the identical architecture inverts: every fan-out is an *additional* live model at the lead's price,
+and the routing becomes a **spend ceiling** rather than a saving. Codex is the worked example — see
+[`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md) and the cross-vendor section below. The
+role table, the escalation ladder, and the effort discipline all still apply; only the economics
+flip. So: **never port a savings figure between harnesses**, and before assuming one, establish
+which of the two properties above your harness actually has.
+
 ## The two-stage advisor consult
 A second opinion is stronger when it's genuinely independent. Run it in two sequenced stages:
 1. **A different-vendor strong model answers first, cold** — the raw question, no context from your
@@ -225,15 +239,31 @@ starter ships in `logger/`. Log one row per delegation and "route mechanical wor
 stops being an assertion; it becomes a measured fail-rate-per-dollar you can tune to *your* stack.
 
 - **Schema** (one JSON object per line, append-only): `{ ts, task_id, task_class, role, model,
-  effort, tokens, duration_s, outcome }`, where `outcome` is `pass | fail | reroute | blocker` and
-  `task_id` is shared across every delegate spawned for one lead-level task — without it you can
-  only measure per-call fail rate, not per-task.
-- **Capture:** a `SubagentStop` hook appends a row on every delegated agent's completion — the agent
-  result carries tokens + duration. See `logger/log-delegation.sh` and the wiring in
-  `logger/README.md`.
-- **Read it:** group by `task_class, model, effort` and watch fail-rate and tokens-per-task. Low
-  fail-rate for a cheap tier on a class → push more of that class down. A spike → that's your
-  escalate signal, now backed by *your* numbers instead of inherited priors.
+  effort, outcome }`, where `outcome` is `pass | fail | reroute | blocker-environment |
+  blocker-decision` and `task_id` is shared across every delegate spawned for one lead-level task —
+  without it you can only measure per-call fail rate, not per-task.
+- **Capture, and its real limits.** A `SubagentStop` hook appends a row on every delegated agent's
+  clean completion. Be clear about what that payload does and doesn't give you, because it decides
+  what you can honestly claim:
+  - **No tokens, no duration.** Claude Code's stop event carries `session_id` / `transcript_path` /
+    `cwd` / `agent_type` — not usage or timing. The Codex event adds `model` and
+    `agent_transcript_path`, still no tokens. Both scripts drop those fields rather than writing a
+    `0` that would read as "free".
+  - **`task_id` / `task_class` / `effort` / `outcome` are manual.** No spawn point exports them into
+    the subagent's environment, so they populate only via a harness wrapper or a later enrichment
+    pass. As shipped this is a skeleton you enrich, not automatic capture.
+  - **A crashed or killed delegate writes no row at all**, so a fail rate computed from this log
+    omits its worst outcomes. Append those by hand.
+- **So what is it good for?** Not cost accounting — a **spawn-and-model audit trail**. It answers
+  *how often am I fanning out, in which role, on which model* — which is exactly the question that
+  catches an unpinned executor silently running the expensive tier, and on Codex catches a runaway
+  fan-out before the bill. That's a smaller claim than fail-rate-per-dollar, and it's one the
+  shipped hook can actually support.
+- **Read it:** the weekly one-liner is `jq -r '.model' <log> | sort | uniq -c | sort -rn` — every row
+  should show the cheap tier you pinned; a flagship in that column means your routing is advisory
+  rather than enforced. Once you've enriched `task_class` and `outcome` by hand for a while, group by
+  `task_class, model, effort` and watch fail-rate: low for a cheap tier on a class → push more of
+  that class down; a spike → that's your escalate signal, backed by *your* data.
 
 Start logging on day one — that's how you turn these defaults into a setup tuned for your own
-battlefield instead of trusting someone else's.
+battlefield instead of trusting someone else's. Just don't claim a number the log can't produce.

@@ -10,7 +10,7 @@
 # Codex profile
 
 > [!warning] Read this before enabling fan-out.
-> On Codex, subagents are **not** a savings mechanism. Codex's own in-binary guidance warns they "can increase usage quickly", and the only public measurements point the same way — one user measured weekly usage going from **1% to 33% in about 25 minutes** after 20 unintended subagents spawned. The routing below exists to *cap* that, not to harvest a saving. Do not port the README's 40-60% figure to this profile; it was measured on a different harness.
+> On Codex, subagents are **not** a savings mechanism. `multi_agent` ships **stable / true** at 0.145.0 — fan-out is on by default — and an unpinned subagent inherits the lead's model silently. The public reports run the same direction: users burning a 20x Max plan ([u/kepners](https://www.reddit.com/r/codex/comments/1v20jzo/agents_in_codex_when_running_in_max_or_pro_no/), 2026-07-20), a weekly limit down to 8% from one accidental Max-effort overnight run ([@LexnLin](https://x.com/LexnLin/status/2079073513017929918)), and the trigger being as light as the word itself — *"if you even say the word subagent anywhere in a prompt, sol will start using subagents for everything"* ([@dexhorthy](https://x.com/dexhorthy/status/2075805253245849872)). No measured saving on this harness exists publicly. The routing below exists to *cap* spend, not to harvest a saving. Do not port the README's 40-60% figure here; it was observed on a different harness with different cache and spawn behaviour.
 >
 > Worse, the off switch was reported unreliable at 0.145.0: `codex exec --disable multi_agent --disable multi_agent_v2` still ran in v2 mode and spawned subagents anyway. **Pin `default_subagent_model` before you enable anything.** An unpinned subagent inherits the lead's expensive model, which is exactly how a quota disappears in 25 minutes.
 
@@ -34,9 +34,12 @@ enabled = true
 expose_spawn_agent_model_overrides = true      # required for per-role model routing
 ```
 
-Two failure modes that are silent by design, both verified on 0.145.0:
+Three failure modes that are silent by design, all verified against 0.145.0:
 - An invalid `model_reasoning_effort` value does **not** error. It runs. Typo it and you get the default tier while believing you pinned one.
 - An unset `default_subagent_model` inherits the lead. Nothing warns you.
+- `max_depth` is annotated in the binary as **"(V1 only; ignored by V2)"**. If you've enabled `multi_agent_v2` and set a depth cap expecting it to bound recursive spawning, it does nothing.
+
+**Reported, not confirmed — check this before trusting your pin.** Three independent public reports say the cheap tier may not be spawnable at all: [@evi77ain](https://x.com/evi77ain/status/2079319256492359764) traces it to model-catalog version flags — *"Sol and Terra are marked as V2-compatible, while Luna, for some reason, is still marked as V1. So `spawn_agent` simply filters it out"* — with [u/wenicud](https://www.reddit.com/r/codex/comments/1v26ebx/56sol_unable_to_spawn_56luna_subagents/) and [u/kepners](https://www.reddit.com/r/codex/comments/1v20jzo/agents_in_codex_when_running_in_max_or_pro_no/) hitting the same wall. `multi_agent_version` does exist as a session field in the binary, so the mechanism is coherent, but the per-model flags aren't statically legible and this is **unverified here**. It matters because a filtered pin fails *upward* — you get the expensive model, silently, which is the exact outcome this profile exists to prevent. Run one canary spawn and read the `model` field in the hook payload before assuming your pin took.
 
 Verify after install rather than trusting it: run one canary task and check the `SubagentStop` log shows the `agent_role` and model you expect. Treat an install you have not seen a hook payload from as not installed.
 
@@ -86,4 +89,19 @@ Sol is the strongest and dearest, Terra the balanced middle, Luna the cheap/fast
 | Cost story | measured saving | **cost control** — no saving measured, evidence points the other way |
 
 ## Status
-Verified against **codex-cli 0.145.0** on macOS. Built-in roles and `codex exec` spawning confirmed from real session records at 0.144.4. Config keys confirmed present in the binary and corroborated by two independent public reports. Custom TOML agent role files exist in the binary (`RawAgentRoleFileToml`) but their discovery path is unconfirmed — this profile deliberately sticks to built-in roles. `multi_agent_v2` exists and is off by default at 0.145.0. Re-check before bumping versions; this surface is moving.
+Verified against **codex-cli 0.145.0** on macOS, re-checked 2026-07-28.
+
+| Claim | Standing |
+|---|---|
+| `multi_agent` stable / true (fan-out on by default) | **verified** — `codex features list` |
+| `multi_agent_v2` exists, stable / false | **verified** — same |
+| `[agents]` keys + `expose_spawn_agent_model_overrides` present | **verified** — present in binary |
+| `max_depth` annotated "(V1 only; ignored by V2)" | **verified** — in-binary string |
+| Unset `default_subagent_model` inherits the lead | **verified** — documented behaviour, no warning emitted |
+| Built-in roles `explorer` / `worker` / `default`; tool is `spawn_agent` | **verified** — `spawn_agent` in binary; roles confirmed from real session records at 0.144.4 |
+| `subagent-stop` payload carries `agent_type` / `model` / `agent_id` / `session_id` / `cwd` / `agent_transcript_path`, no tokens or duration | **verified** — 0.145.0 schema |
+| Cheap tier filtered out of `spawn_agent` by V1/V2 model flags | **reported only** — three independent public reports, mechanism coherent (`multi_agent_version` is a real field), not statically confirmable |
+| Custom TOML role files (`RawAgentRoleFileToml`, `AgentRole` with `config_file`) | **present, discovery path unconfirmed** — this profile sticks to built-in roles |
+| `--disable multi_agent --disable multi_agent_v2` unreliable | **reported only** — single public report at 0.145.0, not reproduced here |
+
+Re-check on every version bump; this surface is moving fast. Anything marked *reported only* is one person's experience until you've seen it yourself — the hook payload is how you check.
