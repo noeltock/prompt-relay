@@ -105,10 +105,15 @@ uninstrumented work. Pick the number for your own harness's context window; the 
 generic part, the threshold isn't.
 
 ## Cross-vendor execution (mixing Claude + another CLI)
-The worked example mixes a Claude lead with OpenAI executors via the official
-`openai/codex-plugin-cc` plugin (`/plugin marketplace add openai/codex-plugin-cc` →
-`/plugin install`). This lets the lead hand mechanical/large work to a cheaper vendor on a separate
-quota. Two rules that matter when you do this:
+Two directions, and they are not symmetric. Pick the one that matches which harness you actually start sessions in.
+
+**Claude lead → OpenAI executors.** The worked example, via the official `openai/codex-plugin-cc` plugin (`/plugin marketplace add openai/codex-plugin-cc` → `/plugin install`). Note the plugin is a *Claude Code* plugin for calling out to Codex — it does not work in reverse. The rules below are written for this direction.
+
+**Codex lead.** No plugin needed and none exists: Codex has native multi-agent (`spawn_agent`, built-in `explorer` / `worker` / `default` roles) with its own config surface. Setup, the roster mapping, and two silent-failure modes are in [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md). Read that instead of this section — most of the rules below exist to tame an *external* CLI you're shelling out to, and they don't apply when delegation is native.
+
+One thing does carry across, inverted and worth stating plainly: **on Claude, delegation is how you save money; on Codex, delegation is what costs you money.** Codex fan-out is on by default and inherits the parent model unless pinned, so the routing there is a ceiling, not a discount. Never port a savings figure between harnesses.
+
+Rules for the Claude-lead direction:
 - **Always pass the executor's model + effort explicitly.** An unpinned call runs the vendor's
   configured default tier, not the one you intended.
 - **Foreground-and-wait, never background.** A detached external worker can be reaped by the

@@ -61,6 +61,30 @@ its worst outcomes — the delegations that never finished cleanly. If you kill 
 (see the cross-vendor guardrails in `references/routing.md`), append a row by hand with
 `outcome: fail` so the count isn't skewed rosy.
 
+## Wire it up (Codex)
+Use `log-delegation-codex.sh` instead — same idea, different payload. Add to `~/.codex/hooks.json` (merge, don't clobber):
+```json
+{
+  "hooks": {
+    "SubagentStop": [
+      { "hooks": [ { "type": "command",
+        "command": "/ABSOLUTE/PATH/prompt-relay/logger/log-delegation-codex.sh" } ] }
+    ]
+  }
+}
+```
+**On Codex this is not optional.** `multi_agent` is on by default, and the disable flags were reported unreliable at 0.145.0 — `codex exec --disable multi_agent --disable multi_agent_v2` still spawned subagents. You can't reliably turn fan-out off, only pin its cost and watch it. This is the watching half. See [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md).
+
+Two differences from the Claude script:
+- **The field paths aren't guesses.** They come from the `subagent-stop.command.input` schema in codex-cli 0.145.0, which carries `agent_type`, `model`, `agent_id`, `session_id`, `cwd` and `agent_transcript_path`. Notably `model` is in the event, so you don't need `ROUTING_MODEL` from the spawn site.
+- **No tokens or duration.** Codex doesn't put them in the stop event; they're in the transcript, which the row links to. Left blank rather than zero — a `0` would read as "free", the exact opposite of what this log is for.
+
+The one query worth running weekly:
+```bash
+jq -r '.model' ~/.codex/routing-log.jsonl | sort | uniq -c | sort -rn
+```
+Every row should show your pinned cheap tier. A flagship in that column means `default_subagent_model` isn't taking effect and your routing is advisory, not enforced.
+
 ## Read it
 Fail-rate and cost per (class, model, effort) — the numbers that tune your routing table:
 ```bash

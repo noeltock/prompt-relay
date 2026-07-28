@@ -12,8 +12,7 @@ framework, no lock-in.
 ## ⚡ Get started — one paste
 **New here? Paste one prompt into your coding agent and it sets up routing for your exact stack in ~2 minutes.** Drop this into Claude Code, Codex, Cursor — anything that can read a URL and write files:
 
-
-> ```Install prompt-relay for me. Read the README at https://github.com/noeltock/prompt-relay and follow its "Install — for an AI agent" section: run the setup wizard — ask which model subscriptions I have, how I want to run this, and which sub-agents I want — then propose a role→model mapping and, once I confirm, install the config into my ~/.claude/. Back up anything you touch; never overwrite my rules.```
+> ```Install prompt-relay for me. Read the README at https://github.com/noeltock/prompt-relay and follow its "Install — for an AI agent" section: run the setup wizard — ask which model subscriptions I have, how I want to run this, and which sub-agents I want — then propose a role→model mapping and, once I confirm, install the config into the right place for the harness you are running in (Claude Code reads ~/.claude/ and CLAUDE.md; other harnesses do not — ask me if unsure rather than guessing). Back up anything you touch; never overwrite my rules.```
 
 **What this does:** the agent interviews you — which subscriptions you have (Claude, ChatGPT/Codex, Gemini…), how hands-off you want to be, which sub-agents to wire up — then proposes a routing setup tailored to your stack (which model *decides*, which *executes*, which *reviews*) and installs it **only after you confirm**, backing up anything it touches. No framework, no account, nothing written until you approve the plan. Prefer to do it by hand? See [Install — for a human](#install--for-a-human) below.
 
@@ -119,12 +118,18 @@ Do not clobber existing config; append and back up.*
    |---|---|---|---|---|---|---|
    | **Claude only** (Max/Pro) | Opus (low) | Haiku | Sonnet (high) | Opus (high) | Haiku | Haiku |
    | **Claude + ChatGPT/Codex** | Opus (low) | Codex cheap tier | Codex mid tier (xhigh) | strong OpenAI → best Claude | Sonnet | Haiku |
-   | **ChatGPT/Codex only** | best model (medium) | cheap tier (high) | mid tier (xhigh) | flagship (high) | cheap tier | cheap tier |
+   | **ChatGPT/Codex only** ([see profile](profiles/codex-AGENTS.md)) | Sol (medium) | Luna (high) | Terra (xhigh) | Sol (high) | Luna (low) | Luna (low) |
    | **One sub / simplest** | your best model (low) | *(spawn inline)* | *(inline)* | your best (high) | your cheapest | your cheapest |
    | **API keys only** | best model (low) | cheapest capable | mid, higher effort | best (high) | cheapest | cheapest |
 
    Starting points, not gospel — confirm each. If they choose "simplest", skip the agent files
    (single-file mode) and stop after the core is installed.
+
+   **Codex-only users: stop here and follow [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md) instead.**
+   Steps 3-8 below install into `~/.claude/`, which Codex never reads. Codex has its own native
+   multi-agent support with built-in roles and a `[agents]` block in `~/.codex/config.toml` — the
+   profile covers it, including two silent-failure modes and why the 40-60% saving does **not**
+   port to that harness.
 3. **Install the routing core.** If the target `CLAUDE.md` exists, back it up
    (`CLAUDE.md.bak-<date>`) and **append** the `## Model routing & delegation` section from this
    repo's `CLAUDE.md` under a clearly-marked block — never overwrite the user's existing rules. If
