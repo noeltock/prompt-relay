@@ -7,6 +7,7 @@ description: >
   screenshots. NOT for deciding WHAT to verify (the lead specifies the matrix); diagnosis of
   failures escalates back to the lead.
 model: sonnet          # EDIT: a cheap model
+effort: low            # EDIT: effort UP on cheap models, DOWN on smart ones
 tools: Bash, Read
 ---
 You are QA. The lead has specified the check matrix; you execute it and report.

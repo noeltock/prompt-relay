@@ -123,7 +123,9 @@ Two directions, and they are not symmetric. Pick the one that matches which harn
 
 **Claude lead → OpenAI executors.** The worked example, via the official `openai/codex-plugin-cc` plugin (`/plugin marketplace add openai/codex-plugin-cc` → `/plugin install`). Note the plugin is a *Claude Code* plugin for calling out to Codex — it does not work in reverse. The rules below are written for this direction.
 
-**Codex lead.** No plugin needed and none exists: Codex has native multi-agent (`spawn_agent`, built-in `explorer` / `worker` / `default` roles) with its own config surface. Setup, the roster mapping, and two silent-failure modes are in [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md). Read that instead of this section — most of the rules below exist to tame an *external* CLI you're shelling out to, and they don't apply when delegation is native.
+**The mechanism, because it is not what people expect.** A Claude Code sub-agent's `model:` field accepts Claude models only. Writing another vendor's model name there does not route to that vendor — it falls back silently, and you get a Claude model doing work you costed as cheap. Cross-vendor execution is therefore a *thin Claude wrapper that shells out*: a cheap Claude model whose entire job is to compose one self-contained prompt, run the external CLI in the foreground with model and effort passed explicitly, and return the report verbatim. `agents/coder-forwarder.example.md` is that wrapper, generic and ready to fill in. It also carries a native fallback, so an outage at the other vendor degrades to slower rather than blocked.
+
+**Codex lead.** No plugin needed and none exists: Codex has native multi-agent (`spawn_agent`, built-in `explorer` / `worker` / `default` roles) with its own config surface. Setup, the roster mapping, which models can actually be spawned, and the silent-failure modes are in [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md). Read that instead of this section — most of the rules below exist to tame an *external* CLI you're shelling out to, and they don't apply when delegation is native.
 
 One thing does carry across, inverted and worth stating plainly: **on Claude, delegation is how you save money; on Codex, delegation is what costs you money.** Codex fan-out is on by default and inherits the parent model unless pinned, so the routing there is a ceiling, not a discount. Never port a savings figure between harnesses.
 
@@ -212,6 +214,12 @@ The non-obvious rules above, distilled to the lesson — not the war story that 
 | Split `BLOCKER: environment` from `BLOCKER: decision` | Conflated, the cheap fix (a missing capability) hides behind the expensive one (asking a human) |
 | Set a session turn/token stop rule in advance | The long tail is the risk: a rare session runs far past where chunking should have kicked in, unnoticed until it's over |
 | Name the specific actions that count as "gathering" | "It feels like judging" is how a second inspection command, a scoping grep, or reading raw sub-agent output slips onto the lead anyway |
+| Make every delegate a leaf unless whitelisted | A role reachable from itself has no stopping point; nested fan-out multiplies before anyone notices |
+| Ban `checkout`/`reset`/`stash`/`clean` as cleanup in shared trees | One lane's tidy-up erases every other lane's uncommitted work, silently |
+| Give the cheap tier named files, never "go find it" | Cheap models degrade quietly on large context — the output stays plausible while the picture is incomplete |
+| Move verbatim payloads with tools, not models | A model told not to summarise summarises anyway and reports that it didn't |
+| Treat a "standing by" report as a no-op | Cheap tiers announce work they never did; counting it silently drops a whole angle |
+| Verify the pin held, don't assume it | An unpinned or filtered executor fails upward to the expensive model with no error |
 
 ## The bright line: read-only gathering is legal, a second inspection chain isn't
 The lead reading a file, running one command, or forming a judgement from what's already in
@@ -224,46 +232,83 @@ delegate already returned. When you notice that pattern, stop and delegate the g
 (a read-only exploration brief, or a verification pass) instead of doing a second round of it
 yourself.
 
-## Learning loop: promoting a repeat finding to a guaranteed check
-Doctrine written into this file (or `CLAUDE.md`) is retrieved probabilistically — it competes with
-whatever's most recent in the transcript, and loses often enough that the same finding can recur
-even after you've written it down. The fix isn't writing it down harder; it's a channel that
-delivers deterministically. `learned/known-failures.md` plus `hooks/pre-commit-checklist.sh` is
-that channel: once the routing log (below) shows the same `task_class` failing twice, add one line
-to that file and it gets printed before every commit from then on, not left to recall. See
-`hooks/README.md` for the wiring and the path from "printed reminder" to "real gate."
+## Spawn graphs: delegates are leaves by default
+An agent that can spawn agents can spawn itself. The graph doesn't have to be a straight line for
+this to bite — any cycle removes the natural stopping point, and depth caps are a weaker guard than
+they look because a cap set on one spawning mode is often ignored by another. Treat the ability to
+spawn as a **named whitelist**, not a default: the lead can spawn, a research coordinator might be
+allowed to spawn gatherers, and every other role is a leaf. Never make a role reachable from
+itself, directly or through a chain.
 
-## Routing log (starter included)
-None of this is empirically tuned until you record it — and no public tool does this yet, so a
-starter ships in `logger/`. Log one row per delegation and "route mechanical work to the cheap tier"
-stops being an assertion; it becomes a measured fail-rate-per-dollar you can tune to *your* stack.
+This is not a hypothetical. Public agent frameworks have shipped recursion incidents where nested
+sub-agents multiplied without bound, and at least one commercial harness answers it with a hard
+depth cap rather than trusting configuration. If your harness records a spawn depth, watch it: a
+depth greater than one is either something you deliberately allowed or something you didn't know
+was happening.
 
-- **Schema** (one JSON object per line, append-only): `{ ts, task_id, task_class, role, model,
-  effort, outcome }`, where `outcome` is `pass | fail | reroute | blocker-environment |
-  blocker-decision` and `task_id` is shared across every delegate spawned for one lead-level task —
-  without it you can only measure per-call fail rate, not per-task.
-- **Capture, and its real limits.** A `SubagentStop` hook appends a row on every delegated agent's
-  clean completion. Be clear about what that payload does and doesn't give you, because it decides
-  what you can honestly claim:
-  - **No tokens, no duration.** Claude Code's stop event carries `session_id` / `transcript_path` /
-    `cwd` / `agent_type` — not usage or timing. The Codex event adds `model` and
-    `agent_transcript_path`, still no tokens. Both scripts drop those fields rather than writing a
-    `0` that would read as "free".
-  - **`task_id` / `task_class` / `effort` / `outcome` are manual.** No spawn point exports them into
-    the subagent's environment, so they populate only via a harness wrapper or a later enrichment
-    pass. As shipped this is a skeleton you enrich, not automatic capture.
-  - **A crashed or killed delegate writes no row at all**, so a fail rate computed from this log
-    omits its worst outcomes. Append those by hand.
-- **So what is it good for?** Not cost accounting — a **spawn-and-model audit trail**. It answers
-  *how often am I fanning out, in which role, on which model* — which is exactly the question that
-  catches an unpinned executor silently running the expensive tier, and on Codex catches a runaway
-  fan-out before the bill. That's a smaller claim than fail-rate-per-dollar, and it's one the
-  shipped hook can actually support.
-- **Read it:** the weekly one-liner is `jq -r '.model' <log> | sort | uniq -c | sort -rn` — every row
-  should show the cheap tier you pinned; a flagship in that column means your routing is advisory
-  rather than enforced. Once you've enriched `task_class` and `outcome` by hand for a while, group by
-  `task_class, model, effort` and watch fail-rate: low for a cheap tier on a class → push more of
-  that class down; a spike → that's your escalate signal, backed by *your* data.
+## Several agents, one working tree
+Parallel lanes in a shared checkout fail in one specific way: one agent decides to tidy up, runs
+`git checkout .` or `git reset --hard`, and erases every other lane's uncommitted work. Nothing
+warns anyone; the other agents keep going against files that silently reverted.
 
-Start logging on day one — that's how you turn these defaults into a setup tuned for your own
-battlefield instead of trusting someone else's. Just don't claim a number the log can't produce.
+Three rules, and they belong in the brief, not in your head:
+- **Name the paths.** Every brief states the files that agent owns and the paths it must not touch.
+- **Ban the undo commands.** `checkout`, `reset`, `stash`, `clean`, revert-to-HEAD — all forbidden
+  as a cleanup mechanism. Undo by editing forward.
+- **Pre-existing changes are a stop.** If a file an agent was told to edit already has changes it
+  didn't make, that's a report-and-halt, not something to merge around.
+
+After any agent reports that it reverted something, diff the whole tree before continuing. And
+when lanes are genuinely independent, give each its own worktree — isolation beats discipline.
+
+## Transport is not judgment
+Two different jobs get lumped together as "delegate the web work":
+- **Judgment** — deciding what to fetch, ranking sources, choosing when to escalate to a paid
+  tool. That's real work for a cheap model. Delegate it.
+- **Transport** — moving a payload you need *verbatim*: a page, a thread, a document. Never route
+  this through a model. Instructing a model not to summarise does not work; it will summarise and
+  report that it didn't. Use a deterministic tool that writes straight to disk.
+
+The tell is ugly: a runner reports "fetched 8/8" and every file is a paraphrase, with no error
+anywhere. Re-fetching the same URLs deterministically can return several times the content. If the
+payload passes through a model's context on its way to disk, assume it was compressed.
+
+## Reading a delegate's report
+- **A report with no work in it is a no-op.** "Standing by", "results will follow", "I'll begin
+  shortly" — cheap tiers produce these while having done nothing. Treat them as failures and
+  re-spawn; never count them toward a result.
+- **Hedges survive into your synthesis.** If a delegate says "ambiguous without reading X", either
+  that qualifier reaches whoever you're reporting to, or you go read X. Summarising strips
+  uncertainty markers first, which is exactly how a qualified finding becomes a confident wrong
+  answer two steps later.
+- **A bounded search can't prove absence.** "No matches" from a scoped grep means no matches in
+  that scope. Say what was actually checked, or search unscoped.
+
+## Verify that your routing took effect
+None of this is worth anything if the pins didn't hold, and the failure is silent: an unpinned
+delegate runs the expensive model, does good work, and nothing anywhere says so. You find out on
+the bill.
+
+Both harnesses leave enough on disk to check. Claude Code writes a transcript per sub-agent that
+records which model actually answered, at what effort, and its token usage; Codex's stop hook
+reports the spawned agent's role directly. `verify/` reads whichever you have and prints a table
+of role, expected model, actual model — plus a mismatch block when they disagree.
+
+Two habits worth forming:
+- **Check after every roster change.** The most common mismatch is a model name that no longer
+  exists, where the harness quietly falls back instead of erroring.
+- **Check what your executor can even be.** Some harnesses filter which models are eligible to run
+  as a sub-agent at all, and a filtered pin fails *upward* to the expensive tier. Pinning the
+  cheapest model is not the same as running it.
+
+What this does NOT give you is cost accounting. It's a spawn-and-model audit trail: how often you
+fan out, in which role, on which model. That's a smaller claim than fail-rate-per-dollar, and it's
+the one the evidence on disk can actually support. Enrich it by hand with outcomes if you want the
+larger one — just don't quote a number the log can't produce.
+
+## Test the doctrine, don't trust it
+`evals/` holds 20 routing cases and 4 install scenarios. Run the routing eval cold — a fresh agent,
+given only the core, answering each case without the key — after any edit to your route table.
+Where it disagrees, the usual cause is a genuinely ambiguous rule rather than a bad answer, and the
+fix is one line in the core. Scattered misses instead of clustered ones usually mean the core isn't
+being loaded at all, which is a placement problem, not a wording one.
