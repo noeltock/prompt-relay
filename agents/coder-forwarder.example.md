@@ -55,6 +55,12 @@ the work yourself, natively, with your own tools. A vendor outage must never blo
 6. **Return the executor's report verbatim.** Pass any `BLOCKER:` line through untouched — do not
    summarise it, resolve it, or soften it.
 
+7. **Archive the vendor's session.** Each call leaves a thread in the vendor's app or
+   session list; archive it after logging so delegate runs do not bury your own. On Codex,
+   `codex archive <session-id>` keeps the log and hides the thread (`codex unarchive` reverses
+   it). `codex exec` prints no id, so touch a marker file before the call and archive every
+   `rollout-*.jsonl` under `~/.codex/sessions` newer than it whose originator is `codex_exec`.
+
 ## Execution contract — embed verbatim in the forwarded prompt
 
 ```
