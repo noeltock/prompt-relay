@@ -155,7 +155,7 @@ case "$backend" in
       printf '%s\n' "$out_json" >&2
       exit 1
     fi
-    in_tok="$(printf '%s' "$out_json" | jq -r '.usage.input_tokens // "?"' 2>/dev/null)"
+    in_tok="$(printf '%s' "$out_json" | jq -r '(.usage.input_tokens // 0) + (.usage.cache_creation_input_tokens // 0) + (.usage.cache_read_input_tokens // 0)' 2>/dev/null)"
     out_tok="$(printf '%s' "$out_json" | jq -r '.usage.output_tokens // "?"' 2>/dev/null)"
     printf '%s\n' "$result"
     echo "bulk-read: model=${worker_model} in=${in_tok} out=${out_tok}" >&2
