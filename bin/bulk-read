@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+# bulk-read: answer a question about a set of files without putting the
+# files themselves in the lead's transcript. Wraps each file in <file
+# path="...">...</file>, sends the bundle plus the question to a cheap
+# worker model, and prints only the worker's answer. The lead pays for the
+# question and the answer; it never pays to re-read the source files as
+# cache on every later turn.
+#
+# This is the stateless bulk-read half of the enforcement layer: the hooks
+# in hooks/claude/ block large unscoped reads and point here as one of the
+# ways out.
+set +e
+
+usage() {
+  cat <<'EOF'
+Usage: bulk-read --question "..." --paths FILE [FILE ...] [--model MODEL] [--backend claude|codex]
+
+  --question   what to extract from the files (required)
+  --paths      one or more files to read, space-separated (required, last flag)
+  --model      worker model (default: $RELAY_BULK_MODEL, or haiku/gpt-5.6-luna per backend)
+  --backend    claude (default) or codex
+
+Env:
+  RELAY_BULK_MODEL   overrides the default model for the chosen backend
+
+Prints the worker's answer to stdout. Prints "bulk-read: model=... in=... out=..."
+token usage to stderr (claude backend only -- codex's CLI does not report usage
+in a script-friendly way).
+
+Limits: the answer has no reliable line numbers -- if you're about to edit,
+follow up with a direct scoped Read of the section it points to. Below
+roughly the hook threshold (RELAY_MIN_LINES), the delegation overhead here
+costs more than just reading the file.
+EOF
+}
+
+question=""
+backend="claude"
+model=""
+paths=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --question)
+      question="$2"
+      shift 2
+      ;;
+    --model)
+      model="$2"
+      shift 2
+      ;;
+    --backend)
+      backend="$2"
+      shift 2
+      ;;
+    --paths)
+      shift
+      while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do
+        paths+=("$1")
+        shift
+      done
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "bulk-read: unrecognised argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$question" ]; then
+  echo "bulk-read: --question is required" >&2
+  usage >&2
+  exit 1
+fi
+
+if [ "${#paths[@]}" -eq 0 ]; then
+  echo "bulk-read: --paths requires at least one file" >&2
+  usage >&2
+  exit 1
+fi
+
+case "$backend" in
+  claude|codex) : ;;
+  *)
+    echo "bulk-read: --backend must be 'claude' or 'codex' (got: $backend)" >&2
+    exit 1
+    ;;
+esac
+
+missing=()
+total_bytes=0
+for p in "${paths[@]}"; do
+  if [ ! -f "$p" ]; then
+    missing+=("$p")
+    continue
+  fi
+  sz=$(wc -c < "$p" 2>/dev/null | tr -d '[:space:]')
+  case "$sz" in ''|*[!0-9]*) sz=0 ;; esac
+  total_bytes=$((total_bytes + sz))
+done
+
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "bulk-read: file(s) not found: ${missing[*]}" >&2
+  exit 1
+fi
+
+if [ "$total_bytes" -gt 409600 ]; then
+  echo "bulk-read: warning: ${#paths[@]} file(s) total ${total_bytes} bytes (>400KB) -- this may exceed the worker's context or run slowly" >&2
+fi
+
+system_instruction='You are a precise code analyst. Answer only the question asked, using only the
+<file> contents given. Respond as structured bullets, nothing else -- no preamble, no summary of
+what you were asked, no closing remarks. Lead each bullet with the exact name, type, and line
+number where the referenced thing lives (e.g. "`fetchUser` (function, line 42): ..."). If the
+question asks about something not present in the files, say so in one bullet and stop. Skip
+anything not asked for.'
+
+payload_file="$(mktemp -t bulk-read.XXXXXX)"
+trap 'rm -f "$payload_file"' EXIT
+
+{
+  printf '%s\n\n' "$system_instruction"
+  printf 'QUESTION: %s\n\n' "$question"
+  for p in "${paths[@]}"; do
+    printf '<file path="%s">\n' "$p"
+    cat "$p"
+    printf '\n</file>\n\n'
+  done
+} > "$payload_file"
+
+case "$backend" in
+  claude)
+    if ! command -v claude >/dev/null 2>&1; then
+      echo "bulk-read: 'claude' CLI not found on PATH" >&2
+      exit 1
+    fi
+    worker_model="${model:-${RELAY_BULK_MODEL:-haiku}}"
+    out_json="$(claude -p --model "$worker_model" --output-format json < "$payload_file" 2>/dev/null)"
+    if [ -z "$out_json" ]; then
+      echo "bulk-read: claude backend returned no output" >&2
+      exit 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+      echo "$out_json"
+      exit 0
+    fi
+    result="$(printf '%s' "$out_json" | jq -r '.result // empty' 2>/dev/null)"
+    if [ -z "$result" ]; then
+      echo "bulk-read: could not parse a result from the claude backend" >&2
+      printf '%s\n' "$out_json" >&2
+      exit 1
+    fi
+    in_tok="$(printf '%s' "$out_json" | jq -r '.usage.input_tokens // "?"' 2>/dev/null)"
+    out_tok="$(printf '%s' "$out_json" | jq -r '.usage.output_tokens // "?"' 2>/dev/null)"
+    printf '%s\n' "$result"
+    echo "bulk-read: model=${worker_model} in=${in_tok} out=${out_tok}" >&2
+    ;;
+  codex)
+    if ! command -v codex >/dev/null 2>&1; then
+      echo "bulk-read: 'codex' CLI not found on PATH" >&2
+      exit 1
+    fi
+    worker_model="${model:-${RELAY_BULK_MODEL:-gpt-5.6-luna}}"
+    codex exec --model "$worker_model" < "$payload_file"
+    ;;
+esac
