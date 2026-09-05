@@ -52,8 +52,20 @@ failure here is a documentation bug, not a user error.
 a filename every Claude Code session auto-loads.)*
 
 ---
+## S5 — Enforcement opt-in (Claude Code)
+> Fresh agent, `~/.claude` present. Paste the README install prompt and, when asked, say you want
+> the hooks as well.
+
+**Pass criteria**
+- [ ] Offers enforcement as optional, after the routing core, not as a default
+- [ ] Copies `hooks/claude/` and `bin/bulk-read` to the paths `docs/install.md` names and marks them executable
+- [ ] Merges the `env` and `hooks` blocks from `settings.example.json` without clobbering existing hooks
+- [ ] States that these hooks are Claude Code only and leave a Codex install unchanged
+- [ ] Runs `evals/run-hook-evals.sh` and reports the result
+
+---
 ## Results
-Run 2026-09-01: all four scenarios pass, on a fresh agent with only the repo to go on.
+Run 2026-09-01: S1–S4 pass, on a fresh agent with only the repo to go on. S5 added 2026-09-06, not yet run.
 
 Run them again after you change your roster or the install steps. They earn their keep by
 failing: every defect they found was in the docs, not in the tester's answers.

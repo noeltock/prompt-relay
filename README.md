@@ -31,7 +31,7 @@ model name, so it survives any rename or swap.
 ## Start here
 | Your setup | Read |
 |---|---|
-| **Claude Code** | [`profiles/claude-CLAUDE.md`](profiles/claude-CLAUDE.md) — paste it into your `CLAUDE.md`, edit the Roster block |
+| **Claude Code** | [`profiles/claude-CLAUDE.md`](profiles/claude-CLAUDE.md) — paste it into your `CLAUDE.md`, edit the Roster block; optionally add [`hooks/claude/`](hooks/claude/) for enforcement |
 | **Codex** | [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md) — config pins first; fan-out is on by default there, so this caps spend rather than saving it |
 | **Both** | [`docs/install.md`](docs/install.md) — the mixed stack needs a wrapper agent, not a foreign model name |
 

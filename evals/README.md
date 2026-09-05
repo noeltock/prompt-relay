@@ -20,7 +20,7 @@ Grade only the role column. Score out of 20.
 
 ## Install eval
 Tests the install path the way a stranger's agent will hit it — see
-`evals/install-scenarios.md`. Four scenarios, checklist per scenario. These need a genuinely
+`evals/install-scenarios.md`. Five scenarios, checklist per scenario. These need a genuinely
 fresh session; an agent that has already read this repo will pass them for the wrong reason.
 
 ## Hook eval

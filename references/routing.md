@@ -180,7 +180,9 @@ lead's context.
 - **Scout-first discovery.** Open non-trivial sessions with ONE exploration brief (a file:line map,
   capped output), not a lead grep chain. The lead greps only to verify a specific claim.
 - **Never full-read an unsized file.** Large file → grep for the section and read just that range,
-  or take an exploration brief.
+  or take an exploration brief, or ask `bin/bulk-read` the question and keep only its bullets.
+  On Claude Code, `hooks/claude/` turns this rule and the scout pin into PreToolUse denials, so it
+  holds when the prose doesn't; the eval in `evals/run-hook-evals.sh` proves the hooks fire.
 - **Cap every sub-agent's output contract** — a verbose report lands in the lead's context and is
   re-read every turn thereafter.
 - **Produce skill-heavy prose artifacts in a sub-agent**, not the lead — loading heavy instructions

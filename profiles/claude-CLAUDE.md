@@ -116,4 +116,5 @@ that did nothing — a no-op, not a result. And its hedges survive into what you
 
 → advisor two-stage rationale, cross-vendor setup, warm-thread reuse, context-cost discipline,
 environment vs decision blockers, session circuit breaker, per-role guardrail detail:
-`references/routing.md`. To check your routing actually took effect: `verify/`.
+`references/routing.md`. To check your routing actually took effect: `verify/`. To enforce the
+large-read and scout-pin rules instead of trusting this text: `hooks/claude/` (optional).
