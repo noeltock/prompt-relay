@@ -67,20 +67,36 @@ pinning one silently gets you the expensive tier instead.
    not install that CLI yourself unless asked.
 
 7. **Optional settings.** Offer to merge `settings.example.json` into `<target>/settings.json`.
-   It contains one key, pinning the lead model so it survives context resets. Merge into the
-   user's existing settings, don't clobber. If they want a hard brake on spawning, that's a
-   `permissions.deny` entry — offer it only if they ask.
+   It pins the lead model so it survives context resets, plus (if step 8 was taken) the `env` and
+   `hooks` blocks that wire the enforcement layer in. Merge into the user's existing settings,
+   don't clobber. If they want a hard brake on spawning, that's a `permissions.deny` entry — offer
+   it only if they ask.
 
-8. **Wire up verification.** Install `verify/` and tell the user how to run it. Note it reads
+8. **Enforcement (Claude Code only, optional).** The routing core is markdown the lead *reads* —
+   under context pressure it can skip a rule the same way it skips anything else. Hooks are
+   *enforced* by the harness, not read by the model. Offer this to anyone who wants the backstop,
+   not just the honor system:
+   - Copy `hooks/claude/` to `~/.claude/hooks/prompt-relay/` (or `<target>/hooks/prompt-relay/`
+     for a project install) and `chmod +x` the three `.sh` files.
+   - Copy `bin/bulk-read` to `~/.claude/bin/bulk-read` and `chmod +x` it; make sure that directory
+     is on `PATH` (or tell the user to add it) so the hooks' own deny messages resolve.
+   - Merge the `env` and `hooks` blocks from `settings.example.json` into `<target>/settings.json`
+     (see step 7), updating the hook `command` paths if you installed anywhere other than
+     `~/.claude/`.
+   - Read `hooks/claude/README.md` before installing — it has the full behaviour, the exact
+     `settings.json` snippet, and what the hooks do *not* catch (Codex is unaffected; the Bash
+     guard reads the command string and fails open, so a wrapper script passes silently).
+
+9. **Wire up verification.** Install `verify/` and tell the user how to run it. Note it reads
    `$HOME/.claude/projects` by default; if you installed somewhere else, set `CLAUDE_PROJECTS_DIR`
    to match or it will report on the wrong sessions. This is how they
    confirm the routing took effect, and the failure it catches is silent — an unpinned delegate
    runs the expensive model and nothing warns them. Do not claim the routing works until a run of
    `verify/check-routing.sh` shows the models they expect.
 
-9. **Report.** List every file created or appended with its path, echo the filled-in Roster back,
-   and state which tier is active (core only, or core plus agents). Do not claim success for a
-   step you skipped.
+10. **Report.** List every file created or appended with its path, echo the filled-in Roster back,
+    and state which tier is active (core only, or core plus agents, or core plus enforcement).
+    Do not claim success for a step you skipped.
 
 # Install — for a human
 
@@ -91,7 +107,11 @@ pinning one silently gets you the expensive tier instead.
 4. (Optional) Copy `agents/*.md` into `~/.claude/agents/` and set each `model:`. If any executor
    isn't a Claude model, use `agents/coder-forwarder.example.md` for that role instead.
 5. (Optional) Merge `settings.example.json` into your `settings.json` to pin the lead model.
-6. Run `verify/check-routing.sh` after your next few delegations and check the models match your
+6. (Optional, Claude Code only) For enforcement rather than just advisory rules — because
+   `CLAUDE.md` is read, not enforced — copy `hooks/claude/` to `~/.claude/hooks/prompt-relay/`
+   and `bin/bulk-read` to `~/.claude/bin/bulk-read`, `chmod +x` both, then merge the `env` and
+   `hooks` blocks from `settings.example.json` in. See `hooks/claude/README.md`.
+7. Run `verify/check-routing.sh` after your next few delegations and check the models match your
    roster.
 
 # Customising

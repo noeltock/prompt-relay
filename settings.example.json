@@ -1,3 +1,30 @@
 {
-  "model": "opus"
+  "model": "opus",
+  "env": {
+    "RELAY_MIN_LINES": "500",
+    "RELAY_SCOUT_MODEL": "sonnet",
+    "RELAY_BULK_MODEL": "haiku"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/prompt-relay/read-scope-guard.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/prompt-relay/bash-read-guard.sh" }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/hooks/prompt-relay/scout-model-pin.sh" }
+        ]
+      }
+    ]
+  }
 }

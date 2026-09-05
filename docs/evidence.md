@@ -24,6 +24,17 @@ payload rather than trusting either answer. Method and caveats in
 
 ## Reported by practitioners (not benchmarks — reports)
 
+On Claude Code, the same architecture from a different team: [Spotify engineering, "Portal by
+Spotify cut my Claude Code token usage by 90%"](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90)
+(2026-09). One practitioner report, not a benchmark — one Java monorepo, four scenarios, no
+methodology for how the 90% was measured. Two things worth taking from it regardless: they report
+their `CLAUDE.md`-only routing rules were ignored under pressure and that switching to
+hook-enforced blocking is what actually changed behaviour — which is the reasoning behind
+`hooks/claude/` in this repo — and the 90% figure specifically covers their bulk-read pattern
+(large-file reads routed through a worker), not delegation generally, so it doesn't transfer to
+the rest of this doc's claims. Treat it the same as the Codex practitioner reports below: directional,
+checkable, not yet independently reproduced.
+
 On Codex, the cost failure mode:
 - [@LexnLin](https://x.com/LexnLin/status/2079073513017929918) (2026-07-20): *"Accidentally ran the
   codex goal on GPT 5.6 Sol MAX instead of medium overnight. And now I have 8% of my weekly Codex
