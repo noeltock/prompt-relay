@@ -23,6 +23,19 @@ Tests the install path the way a stranger's agent will hit it — see
 `evals/install-scenarios.md`. Four scenarios, checklist per scenario. These need a genuinely
 fresh session; an agent that has already read this repo will pass them for the wrong reason.
 
+## Hook eval
+Tests whether the enforcement layer (`hooks/claude/`) actually decides, deterministically — no
+model or judgment call involved. Run it directly:
+
+```bash
+bash evals/run-hook-evals.sh
+```
+
+It builds fixtures in a temp dir, feeds each hook synthetic `PreToolUse` JSON, and checks the
+decision against the 17 cases in `evals/hook-cases.md` — deny/allow for the two read guards,
+`updatedInput.model` for the scout pin. PASS/FAIL per case, exit 1 on any failure. Re-run after
+editing a hook or changing `RELAY_MIN_LINES`/`RELAY_SCOUT_MODEL` defaults.
+
 ## What these do not test
 Neither suite measures cost. Whether delegation saves you money depends on your harness's
 caching, your session lengths and your task mix — run `verify/` on your own logs for that, and
