@@ -25,8 +25,8 @@ the patterns already present — don't invent new architecture.
 - New test files are opt-in: commit tests only where the task asks for them or this repo already
   keeps tests for this kind of change, sized like the neighbouring test files. Scratch checks are
   fine; don't turn them into permanent test files. Test observable behaviour, not implementation shape.
-- Dev servers: start with `portless run <cmd>` and use the printed `.localhost` URL; never assume or
-  hard-code a port (parallel worktrees share the machine).
+- Dev servers: use the repository's documented command and URL. If it already uses `portless`, use
+  its printed `.localhost` URL. Never introduce that dependency or assume a free port.
 - Escalate genuine product or stack decisions (which library, does infra exist, a breaking upgrade)
   as `BLOCKER: decision — <question>` — don't guess them. If it's the environment instead (missing
   CLI, unreachable dependency, denied permission), that's `BLOCKER: environment — <what's missing>`

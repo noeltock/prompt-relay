@@ -108,7 +108,7 @@ case "$threshold" in ''|*[!0-9]*) threshold=500 ;; esac
 
 if [ "$lines" -gt "$threshold" ]; then
   jq -n --arg f "$file" --arg n "$lines" --arg b "$base" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("bash-read-guard: `" + $b + " " + $f + "` would dump " + $n + " lines straight into the transcript, re-read as cache every turn. Pick one: (a) grep for the section you need, or re-run with an explicit scope (`head -n N`, `tail -n N`, `sed -n`), (b) run `bin/bulk-read --question \"...\" --paths " + $f + "` and read only its answer, (c) delegate the file to the `runner`/scout role and keep only its brief, or (d) if you genuinely need it all inline, pipe or redirect it (e.g. `" + $b + " " + $f + " | less`) -- a pipe or redirect always passes this guard, which is what makes it a deliberate choice.")}}'
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("bash-read-guard: `" + $b + " " + $f + "` would dump " + $n + " lines straight into the transcript, re-read as cache every turn. Pick one: (a) grep for the section you need, or re-run with an explicit scope (`head -n N`, `tail -n N`, `sed -n`), (b) run `bulk-read --question \"...\" --paths " + $f + "` and read only its answer, (c) delegate the file to the `runner`/scout role and keep only its brief, or (d) if you genuinely need it all inline, pipe or redirect it (e.g. `" + $b + " " + $f + " | less`) -- a pipe or redirect always passes this guard, which is what makes it a deliberate choice.")}}'
   exit 0
 fi
 exit 0

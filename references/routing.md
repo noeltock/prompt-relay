@@ -41,13 +41,13 @@ transcript is re-read as cache every turn, so *shrinking it* is what saves money
 is explicit opt-in, so a delegation only happens when you asked for one. Claude Code has both, which
 is why delegating there is a discount.
 
-Where a harness spawns by default, or where a subagent inherits the lead's model unless you pin it,
-the identical architecture inverts: every fan-out is an *additional* live model at the lead's price,
-and the routing becomes a **spend ceiling** rather than a saving. Codex is the worked example — see
+Where a harness enables subagents by default, or where a subagent inherits the lead's model unless
+you pin it, every fan-out adds model work. Codex is the worked example — see
 [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md) and the cross-vendor section below. The
-role table, the escalation ladder, and the effort discipline all still apply; only the economics
-flip. So: **never port a savings figure between harnesses**, and before assuming one, establish
-which of the two properties above your harness actually has.
+role table, escalation ladder, and effort discipline still apply, but judge the whole result:
+accepted output, elapsed time, correction work, lead-context quality, and allowance use. OpenAI
+states that Codex subagent workflows consume more tokens than comparable single-agent runs, so
+**never port a savings figure between harnesses**.
 
 ## The two-stage advisor consult
 A second opinion is stronger when it's genuinely independent. Run it in two sequenced stages:
@@ -125,13 +125,26 @@ Two directions, and they are not symmetric. Pick the one that matches which harn
 
 **The mechanism, because it is not what people expect.** A Claude Code sub-agent's `model:` field accepts Claude models only. Writing another vendor's model name there does not route to that vendor — it falls back silently, and you get a Claude model doing work you costed as cheap. Cross-vendor execution is therefore a *thin Claude wrapper that shells out*: a cheap Claude model whose entire job is to compose one self-contained prompt, run the external CLI in the foreground with model and effort passed explicitly, and return the report verbatim. `agents/coder-forwarder.example.md` is that wrapper, generic and ready to fill in. It also carries a native fallback, so an outage at the other vendor degrades to slower rather than blocked.
 
-**Codex lead.** No plugin needed and none exists: Codex has native multi-agent (`spawn_agent`, built-in `explorer` / `worker` / `default` roles) with its own config surface. Setup, the roster mapping, which models can actually be spawned, and the silent-failure modes are in [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md). Read that instead of this section — most of the rules below exist to tame an *external* CLI you're shelling out to, and they don't apply when delegation is native.
+**Codex lead.** No plugin is needed: Codex has native multi-agent plus named custom agents under
+`~/.codex/agents/` or `.codex/agents/`. Setup, the roster mapping, capability canary, and
+transcript verification are in [`profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md). Read that
+instead of this section — most of the rules below exist to tame an external CLI and do not apply
+when delegation is native.
 
-One thing does carry across, inverted and worth stating plainly: **on Claude, delegation is how you save money; on Codex, delegation is what costs you money.** Codex fan-out is on by default and inherits the parent model unless pinned, so the routing there is a ceiling, not a discount. Never port a savings figure between harnesses.
+One thing carries across: unpinned delegation is unauditable. Codex can inherit the parent model,
+and every child performs additional model work. Pin each named role, verify the actual model and
+effort from the transcript, and evaluate the result on your own workload.
 
 Rules for the Claude-lead direction:
 - **Always pass the executor's model + effort explicitly.** An unpinned call runs the vendor's
   configured default tier, not the one you intended.
+- **A requested pin is not an observation.** Forwarder logs keep `requested_model` /
+  `requested_effort` separate from `observed_model` / `observed_effort`. Missing runtime evidence
+  is `UNVERIFIED`, never a successful route. For Codex, `codex exec --json` emits a documented
+  `thread.started.thread_id`; use that exact ID to associate the run with its transcript.
+- **Archive only an exact session ID.** Codex accepts `codex archive <session-id>`. Never archive
+  every transcript newer than a marker or matching a time window; concurrent unrelated tasks can
+  satisfy those selectors. If no stable ID is available, skip cosmetic cleanup.
 - **Foreground-and-wait, never background.** A detached external worker can be reaped by the
   harness's process cleanup and wedge at "running" forever with no liveness signal. Run it in the
   foreground with an explicit timeout; it returns the result directly and can't wedge.
@@ -286,22 +299,46 @@ payload passes through a model's context on its way to disk, assume it was compr
 - **A bounded search can't prove absence.** "No matches" from a scoped grep means no matches in
   that scope. Say what was actually checked, or search unscoped.
 
+## Make routing visible without making it noisy
+
+Runtime routing has one presentation contract across hosts:
+
+```text
+**{icon} {role}** · {state}: {short task or outcome} · {routing evidence}
+```
+
+The lead emits one line when dispatching and one when the result returns. These are logical lines:
+a narrow terminal may wrap them visually, but the template contains no embedded line break. Use
+the role names and icons defined in the installed profile, the middle dot as the separator, and
+only `Dispatched`, `Done`, `Blocked`, or `Failed` as states. Detailed evidence belongs in ordinary
+prose after the completion signal.
+
+Routing evidence is epistemic, not decorative. `requested Terra / medium` describes intent;
+`verified Terra / medium` requires a transcript or equivalent runtime receipt. A successful task,
+a parsed TOML file, and a plausible answer do not prove the route. When no runtime check was made,
+keep `requested` even on the completion line.
+
+Installation is the deliberate exception to the one-line rule. It ends with one compact table of
+role, model/effort, setup state, and runtime proof, followed by installed components and a bold
+host-specific fresh-session instruction. That table is a one-time activation receipt, not a format
+for ordinary turns.
+
 ## Verify that your routing took effect
 None of this is worth anything if the pins didn't hold, and the failure is silent: an unpinned
-delegate runs the expensive model, does good work, and nothing anywhere says so. You find out on
-the bill.
+delegate can run the wrong model and still do convincing work. Configuration alone does not reveal
+the fallback.
 
 Both harnesses leave enough on disk to check. Claude Code writes a transcript per sub-agent that
-records which model actually answered, at what effort, and its token usage; Codex's stop hook
-reports the spawned agent's role directly. `verify/` reads whichever you have and prints a table
-of role, expected model, actual model — plus a mismatch block when they disagree.
+records which model actually answered, at what effort, and its token usage. Codex session
+transcripts record the spawned role plus the final model and effort; the legacy hook adapter is
+only for older installs and external forwarders. `verify/` reads the applicable evidence and
+prints role, expected model, actual model, and effort — plus a mismatch block when they disagree.
 
 Two habits worth forming:
 - **Check after every roster change.** The most common mismatch is a model name that no longer
   exists, where the harness quietly falls back instead of erroring.
-- **Check what your executor can even be.** Some harnesses filter which models are eligible to run
-  as a sub-agent at all, and a filtered pin fails *upward* to the expensive tier. Pinning the
-  cheapest model is not the same as running it.
+- **Canary every model/effort pair.** Catalogue metadata and availability can drift. A harmless live
+  spawn plus transcript receipt is stronger than inference from a flag or successful-looking output.
 
 What this does NOT give you is cost accounting. It's a spawn-and-model audit trail: how often you
 fan out, in which role, on which model. That's a smaller claim than fail-rate-per-dollar, and it's
@@ -309,7 +346,7 @@ the one the evidence on disk can actually support. Enrich it by hand with outcom
 larger one — just don't quote a number the log can't produce.
 
 ## Test the doctrine, don't trust it
-`evals/` holds 20 routing cases and 4 install scenarios. Run the routing eval cold — a fresh agent,
+`evals/` holds 20 routing cases and 5 install scenarios. Run the routing eval cold — a fresh agent,
 given only the core, answering each case without the key — after any edit to your route table.
 Where it disagrees, the usual cause is a genuinely ambiguous rule rather than a bad answer, and the
 fix is one line in the core. Scattered misses instead of clustered ones usually mean the core isn't

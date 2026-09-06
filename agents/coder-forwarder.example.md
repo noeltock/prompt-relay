@@ -1,5 +1,5 @@
 ---
-name: coder-low
+name: FORWARDER-ROLE
 description: >
   Implements fully-specified, mechanical coding work at low cost by forwarding it to a
   cheaper model running in a different vendor's CLI. Use AFTER the plan is settled and every
@@ -42,24 +42,36 @@ the work yourself, natively, with your own tools. A vendor outage must never blo
    reasonable default for mechanical work). Never background it and never launch it inside a
    background shell: a detached worker can be reaped by the harness's process cleanup and then sit
    at "running" forever with no liveness signal, which looks identical to slow progress.
-5. **Log what you actually ran.** Nothing else can see this call — the harness records only that
-   *this* wrapper ran, on its cheap Claude model, not what you shelled out to. Without this line
-   the cross-vendor half of your routing is unverifiable. Append one row after the call returns:
+5. **Separate the request from the observation.** Nothing else can see this call — the harness
+   records only that *this* wrapper ran, on its cheap Claude model, not what you shelled out to.
+   Never write the requested model into an observed-model field. Append a request-only row after
+   the call returns unless the executor supplies an independent runtime receipt:
    ```bash
    rc=$?   # capture FIRST — every command below, date included, overwrites $?
-   printf '{"ts":"%s","harness":"forwarder","role":"coder-low","model":"EXECUTOR-MODEL","effort":"EXECUTOR-EFFORT","exit":%s}\n' \
-     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$rc" >> "${ROUTING_LOG:-$HOME/.codex/routing-log.jsonl}"
+   jq -cn \
+     --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     --arg role "FORWARDER-ROLE" \
+     --arg requested_model "EXECUTOR-MODEL" \
+     --arg requested_effort "EXECUTOR-EFFORT" \
+     --argjson exit "$rc" \
+     '{ts:$ts,harness:"forwarder",role:$role,
+       requested_model:$requested_model,requested_effort:$requested_effort,
+       observed_model:"unknown",observed_effort:"",evidence:"request-only",exit:$exit}' \
+     >> "${ROUTING_LOG:-$HOME/.codex/routing-log.jsonl}"
    ```
-   Read it back with `verify/check-routing-codex.sh`, which handles these rows alongside native
-   ones.
+   `verify/check-routing-codex.sh` reports this as `UNVERIFIED`, not a successful route. Populate
+   `observed_model` / `observed_effort` only from an executor-emitted receipt and record its path or
+   ID in `evidence`. For Codex, prefer `codex exec --json`: its documented `thread.started` event
+   supplies the exact `thread_id`, while the matching Codex transcript supplies model and effort.
+   Read both with the verifier instead of copying the command-line flags into evidence.
 6. **Return the executor's report verbatim.** Pass any `BLOCKER:` line through untouched — do not
    summarise it, resolve it, or soften it.
 
-7. **Archive the vendor's session.** Each call leaves a thread in the vendor's app or
-   session list; archive it after logging so delegate runs do not bury your own. On Codex,
-   `codex archive <session-id>` keeps the log and hides the thread (`codex unarchive` reverses
-   it). `codex exec` prints no id, so touch a marker file before the call and archive every
-   `rollout-*.jsonl` under `~/.codex/sessions` newer than it whose originator is `codex_exec`.
+7. **Archive only an identified vendor session.** Never select sessions by timestamp, glob, or
+   "newer than" marker; another concurrent task can match. On Codex, run with `--json`, extract the
+   exact ID from `select(.type == "thread.started") | .thread_id`, and pass only that ID to
+   `codex archive <session-id>`. If the executor does not return a stable session ID, leave the
+   session visible and report that cleanup was skipped. Archival is cosmetic, never worth guessing.
 
 ## Execution contract — embed verbatim in the forwarded prompt
 

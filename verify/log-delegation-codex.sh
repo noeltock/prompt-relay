@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
-# log-delegation-codex.sh — append one routing-log row per Codex subagent.
+# log-delegation-codex.sh — legacy/forwarder-compatible hook log for Codex subagents.
 #
-# Codex counterpart to log-delegation.sh. Wire as a SubagentStop hook in
-# ~/.codex/hooks.json (see this dir's README.md).
+# Native verification now reads Codex session transcripts directly, including the
+# actual model and effort from turn_context. Keep this hook only for older installs,
+# external forwarders, or a harness that already exposes a compatible SubagentStop
+# feed. It is not part of the current native Codex install path.
 #
-# Why this one is NOT optional on Codex:
-#   multi_agent is on by default and the disable flags were reported unreliable
-#   at 0.145.0 (`--disable multi_agent --disable multi_agent_v2` still spawned
-#   subagents). You cannot reliably switch fan-out off — you can only pin what it
-#   costs and watch it. This log is the watching half. One user measured weekly
-#   usage going 1% -> 33% in ~25 minutes from 20 unintended subagents; that is
-#   the failure this exists to make visible on the first occurrence.
-#
-# Unlike the Claude version, the field paths here are NOT guesses. They come from
-# the subagent-stop.command.input JSON schema in codex-cli 0.145.0:
+# Current official Codex hook documentation establishes the shared model and transcript fields;
+# these additional paths were first checked against codex-cli 0.145.0:
 #   agent_id · agent_type · agent_transcript_path · model · cwd · session_id
 #   turn_id · permission_mode · hook_event_name · last_assistant_message
 #   stop_hook_active
+# Later builds may omit model or effort. The script records "unknown" rather than
+# inferring either; check-routing-codex.sh prefers transcripts for native runs.
 set -euo pipefail
 
 LOG="${ROUTING_LOG:-$HOME/.codex/routing-log.jsonl}"
@@ -42,13 +38,15 @@ jq -cn \
   --arg ts "$ts" --arg role "$role" --arg model "$model" \
   --arg agent_id "$agent_id" --arg session "$session" \
   --arg cwd "$cwd" --arg transcript "$transcript" \
-  '{ts:$ts, harness:"codex", role:$role, model:$model,
+  '{ts:$ts, harness:"codex", role:$role,
+    observed_model:$model, observed_effort:"",
     agent_id:$agent_id, session_id:$session, cwd:$cwd,
-    transcript_path:$transcript}' \
+    transcript_path:$transcript,
+    evidence:(if $transcript == "" then "SubagentStop" else $transcript end)}' \
   >> "$LOG"
 
-# The one query that matters, run it weekly:
-#   jq -r '.model' ~/.codex/routing-log.jsonl | sort | uniq -c | sort -rn
-# Every row should show your pinned cheap tier. A flagship model in this column
-# means default_subagent_model is not taking effect and your routing policy is
-# advisory rather than enforced.
+# For an inventory of legacy rows:
+#   jq -r '[.role,.observed_model] | @tsv' ~/.codex/routing-log.jsonl | sort | uniq -c | sort -rn
+# Compare the result with the installed roster. Missing model or effort data means
+# the legacy feed cannot prove that part of the route; use native transcripts when
+# they are available.

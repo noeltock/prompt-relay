@@ -6,8 +6,8 @@
 
 **Your smartest model should be *deciding*, not *typing*.**
 
-A copy-paste routing template for coding agents: your expensive model decides, cheap models
-execute, a strong one advises. Six roles, plain markdown, no framework and nothing to install.
+A copy-paste routing template for coding agents: your expensive model decides, cheaper models
+execute, a strong one advises. Six roles, plain Markdown/TOML, and no orchestration framework.
 
 Paste this into your agent — it interviews you, proposes a role→model map, and installs only
 after you approve:
@@ -28,15 +28,28 @@ model name, so it survives any rename or swap.
 | `qa` | runs checks, reports pass/fail | a cheap model |
 | `runner` | web, transforms, dumb sweeps | your cheapest |
 
+## What it looks like
+
+Prompt Relay keeps runtime routing visible without turning the terminal into a dashboard. Dispatch
+and completion signals are each one logical line:
+
+> **🔧 Coder Low** · Dispatched: implement the approved settings change · requested Terra / medium
+
+> **🔧 Coder Low** · Done: settings change implemented and checks passed · verified Terra / medium
+
+The installer finishes with one compact roster table showing what was configured, what was
+live-verified, and whether a fresh session is required. A configured route is never presented as
+verified merely because its file parses.
+
 ## Start here
 | Your setup | Read |
 |---|---|
 | **Claude Code** | [`profiles/claude-CLAUDE.md`](profiles/claude-CLAUDE.md) — paste it into your `CLAUDE.md`, edit the Roster block; optionally add [`hooks/claude/`](hooks/claude/) for enforcement |
-| **Codex** | [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md) — config pins first; fan-out is on by default there, so this caps spend rather than saving it |
+| **Codex** | [`profiles/codex-AGENTS.md`](profiles/codex-AGENTS.md) — a model-agnostic policy plus native custom-agent TOMLs; edit the example roster for your account |
 | **Both** | [`docs/install.md`](docs/install.md) — the mixed stack needs a wrapper agent, not a foreign model name |
 
 Then run [`verify/`](verify/) to confirm your routing actually took effect, because the failure
-mode is silent: an unpinned delegate runs the expensive model and nothing tells you.
+mode is silent: requested and actual model/effort can differ unless you inspect the transcript.
 
 ## Enforcement, not just instructions
 Routing rules in a `CLAUDE.md` are read, not enforced; under context pressure the lead skips them
@@ -56,18 +69,19 @@ thresholds are env vars, and `evals/run-hook-evals.sh` checks all of it determin
 ## What else is in here
 | | |
 |---|---|
-| `agents/` | optional named sub-agents — persistent role contracts instead of inline instructions |
+| `agents/` | optional Claude Code sub-agents — persistent role contracts instead of inline instructions |
+| `profiles/codex-agents/` | native Codex custom-agent TOMLs — example pins kept separate from the portable policy |
 | `references/routing.md` | the deep mechanics, each rule tied to the failure it prevents |
 | `hooks/claude/` | PreToolUse hooks that enforce the read and pin rules on Claude Code |
 | `bin/bulk-read` | one-shot cross-file question to a cheap model; the corpus never touches the lead |
 | `verify/` | reads your own logs and shows which model actually ran |
-| `evals/` | 20 routing cases, 4 install scenarios and 17 hook cases, so you can test this rather than trust it |
+| `evals/` | 20 routing cases, 5 install scenarios, 17 hook cases, and Codex transcript fixtures |
 | `docs/evidence.md` | every claim with its source and how firmly it stands |
 
 ## On being honest about savings
-Delegation shrinks the bill on Claude Code because the lead re-reads its own transcript as cache
-every turn, so moving execution off it is what actually saves. How much you save depends on your
-caching, your session lengths and your task mix. Nobody — including us — has published a
-benchmark of the delegation half, so this repo gives you the tools to measure your own numbers
-instead of a headline percentage to take on faith. What's verified, what's a practitioner report
-and what's still open is laid out in [`docs/evidence.md`](docs/evidence.md).
+Delegation can shrink a Claude Code bill when it keeps a costly lead transcript small. On Codex,
+OpenAI explicitly says subagent workflows consume more tokens than comparable single-agent runs;
+the reasons to route are better context, faster independent work, and matching capability to task.
+How that lands on an allowance depends on your sessions and task mix. This repo verifies the model
+and effort that actually ran instead of attaching a universal percentage. What's verified, what's
+a practitioner report and what's still open is in [`docs/evidence.md`](docs/evidence.md).

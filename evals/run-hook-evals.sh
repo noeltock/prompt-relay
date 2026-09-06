@@ -21,7 +21,15 @@ done
 command -v jq >/dev/null 2>&1 || { echo "run-hook-evals: jq is required" >&2; exit 1; }
 
 FIXTURES="$(mktemp -d -t hook-evals.XXXXXX)"
-trap 'rm -rf "$FIXTURES"' EXIT
+cleanup() {
+  if command -v trash >/dev/null 2>&1; then
+    trash "$FIXTURES"
+  else
+    mkdir -p "$HOME/.Trash"
+    mv "$FIXTURES" "$HOME/.Trash/hook-evals-$(date +%s)"
+  fi
+}
+trap cleanup EXIT
 
 BIG="$FIXTURES/big.txt"
 SMALL="$FIXTURES/small.txt"

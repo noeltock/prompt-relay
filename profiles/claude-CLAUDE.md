@@ -27,6 +27,14 @@ down, even for small tasks. Judge the output, not the price tag — redo mediocr
 on a stronger model without asking. Long sessions: scout-first, cap sub-agent output, batch shell
 work — detail in `references/routing.md`.
 
+**Relay receipts:** keep every user-visible dispatch and completion to exactly one logical
+Markdown line: `**{icon} {role}** · {state}: {short task or outcome} · {routing evidence}`. Use
+`🧭 Lead`, `🧠 Advisor`, `🔧 Coder Low`, `🛠️ Coder High`, `🧪 QA`, and `🔎 Runner`; the text label,
+not the icon, carries meaning. States are `Dispatched`, `Done`, `Blocked`, and `Failed`. Say
+`requested` until the harness transcript or another runtime receipt proves model and effort;
+completion alone is not verification. Put any necessary detail after the one-line signal in normal
+prose. Never turn a runtime signal into a card, list, or table.
+
 **The bright line:** reading a file or running one command to judge something a delegate already
 returned is normal — that's the job. What isn't: a *second* inspection command run just to
 understand more, a grep whose real purpose is scoping a spec rather than confirming one claim, or
@@ -59,9 +67,9 @@ on large context, staying confident on an incomplete picture.
 straight to disk, never through a model — one told not to summarise will summarise anyway and
 report that it didn't. Delegate what to fetch; never the fetching itself.
 
-> **Agents are optional.** If you haven't created the `agents/*.md` files, treat each role as
-> "spawn a sub-agent with this model + a one-line instruction inline." The named files are an
-> upgrade (persistent contract, cheaper re-use), not a requirement.
+> **Named agent files are optional; delegation is not.** Without `agents/*.md`, this multi-agent
+> profile still spawns each role with an inline contract. Users who choose the installer's
+> `single-agent core` must not install this profile at all.
 
 **If you can't write the spec, you can't delegate it.** A request with no named approach ("add
 rate limiting") gets scoped by the `lead` first and handed down second. Passing the raw request

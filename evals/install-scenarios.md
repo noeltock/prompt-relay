@@ -1,10 +1,20 @@
-# Install eval — 4 scenarios
+# Install eval — 5 scenarios
 
 The install path is agent-run, so it needs testing the way an agent will hit it: cold, with only
 the repo to go on. Run each scenario against a fresh agent session with no memory of this repo.
 
 For each: paste the scenario prompt, let the agent work, then grade against the criteria. A
 failure here is a documentation bug, not a user error.
+
+For every successful installation scenario (S1, S2, S3, and S5), also require the shared receipt:
+
+- [ ] Ends with one compact role/model/setup/runtime-proof table
+- [ ] Lists the actual installed components or paths
+- [ ] Distinguishes configured, not invoked, and live-verified states
+- [ ] Never treats one successful canary as proof that every role works
+- [ ] Gives a bold, accurate host-specific activation instruction: a fresh Codex task as the clean
+      boundary; Claude restart only when its watched-directory rules require it, otherwise recommended
+- [ ] Uses one-line runtime dispatch/completion signals rather than multiline cards
 
 ---
 ## S1 — Claude only
@@ -25,7 +35,9 @@ failure here is a documentation bug, not a user error.
 **Pass criteria**
 - [ ] Routes to the Codex profile and does NOT write anything into `~/.claude/`
 - [ ] Names the pin for the default subagent model as non-optional
-- [ ] States that fan-out is on by default here and this is spend control, not a saving
+- [ ] Installs or proposes the Codex custom-agent TOMLs separately from the portable policy
+- [ ] Requires a live canary plus transcript verification for each model/effort pair
+- [ ] States that subagent work adds tokens and does not promise a saving
 - [ ] Does not copy the Claude cost claims across
 
 ---

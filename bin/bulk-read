@@ -121,7 +121,15 @@ question asks about something not present in the files, say so in one bullet and
 anything not asked for.'
 
 payload_file="$(mktemp -t bulk-read.XXXXXX)"
-trap 'rm -f "$payload_file"' EXIT
+cleanup_payload() {
+  if command -v trash >/dev/null 2>&1; then
+    trash "$payload_file"
+  else
+    mkdir -p "$HOME/.Trash"
+    mv "$payload_file" "$HOME/.Trash/bulk-read-$(date +%s)"
+  fi
+}
+trap cleanup_payload EXIT
 
 {
   printf '%s\n\n' "$system_instruction"

@@ -47,7 +47,7 @@ case "$threshold" in ''|*[!0-9]*) threshold=500 ;; esac
 
 if [ "$lines" -gt "$threshold" ]; then
   jq -n --arg f "$f" --arg n "$lines" \
-    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("read-scope-guard: " + $f + " is " + $n + " lines. An unscoped Read this large sits in the transcript and is re-read as cache every turn. Pick one: (a) grep for the section you need and re-issue Read with offset+limit, (b) run `bin/bulk-read --question \"...\" --paths " + $f + "` and read only its answer, (c) delegate the file to the `runner`/scout role and keep only its brief, or (d) if the full read is genuinely required, re-issue with an explicit limit (e.g. limit=" + $n + ") to make it a deliberate choice.")}}'
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("read-scope-guard: " + $f + " is " + $n + " lines. An unscoped Read this large sits in the transcript and is re-read as cache every turn. Pick one: (a) grep for the section you need and re-issue Read with offset+limit, (b) run `bulk-read --question \"...\" --paths " + $f + "` and read only its answer, (c) delegate the file to the `runner`/scout role and keep only its brief, or (d) if the full read is genuinely required, re-issue with an explicit limit (e.g. limit=" + $n + ") to make it a deliberate choice.")}}'
   exit 0
 fi
 exit 0

@@ -1,6 +1,7 @@
 # Evals
 
-Two suites, both cheap to run, both worth re-running after you edit your roster or the doctrine.
+Four evaluation surfaces, all cheap to run and worth revisiting after you edit the roster,
+installer, verifier, or routing doctrine.
 
 ## Routing eval
 Tests whether the route table actually decides. Paste this to a fresh agent session:
@@ -22,6 +23,20 @@ Grade only the role column. Score out of 20.
 Tests the install path the way a stranger's agent will hit it — see
 `evals/install-scenarios.md`. Five scenarios, checklist per scenario. These need a genuinely
 fresh session; an agent that has already read this repo will pass them for the wrong reason.
+Successful install scenarios must also produce the canonical activation receipt: one compact
+roster table, honest verification states, and an explicit fresh-session instruction.
+
+## Codex verifier eval
+
+Tests transcript parsing, role normalization, model/effort comparison, mismatch exit status, and
+legacy-log combination. It also covers empty custom roles, request-only forwarders, JSON empty
+results, independently evidenced forwarder observations, and malformed transcript/log reporting:
+
+```bash
+bash evals/run-codex-verifier-evals.sh
+```
+
+It uses synthetic session JSONL in a temporary Codex home and never calls a model.
 
 ## Hook eval
 Tests whether the enforcement layer (`hooks/claude/`) actually decides, deterministically — no
@@ -37,6 +52,6 @@ decision against the 17 cases in `evals/hook-cases.md` — deny/allow for the tw
 editing a hook or changing `RELAY_MIN_LINES`/`RELAY_SCOUT_MODEL` defaults.
 
 ## What these do not test
-Neither suite measures cost. Whether delegation saves you money depends on your harness's
+None of these suites measures cost. Whether delegation improves the workflow depends on your harness's
 caching, your session lengths and your task mix — run `verify/` on your own logs for that, and
 treat anyone's headline percentage, including ours, as their number rather than yours.
