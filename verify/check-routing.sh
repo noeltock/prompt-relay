@@ -4,8 +4,19 @@ set -u
 
 usage() {
   cat <<'EOF'
-Usage: check-routing.sh [--since N] [--project SUBSTR] [--json] [--roster FILE]
+Usage: check-routing.sh [--since N] [--after TIMESTAMP] [--project SUBSTR] [--json] [--roster FILE]
 EOF
+}
+
+parse_after() {
+  case "$1" in
+    ''|*[!0-9]*) ;;
+    *) printf '%s' "$1"; return 0 ;;
+  esac
+  date -d "$1" +%s 2>/dev/null && return 0
+  date -j -f '%Y-%m-%dT%H:%M:%S' "$1" +%s 2>/dev/null && return 0
+  date -j -f '%Y-%m-%d' "$1" +%s 2>/dev/null && return 0
+  return 1
 }
 
 read_row() {
@@ -78,6 +89,7 @@ if [ "${1:-}" = '--worker' ]; then
 fi
 
 since=7
+after=''
 project_filter=''
 json_output=0
 roster=''
@@ -87,6 +99,11 @@ while [ "$#" -gt 0 ]; do
     --since)
       [ "$#" -ge 2 ] || { usage >&2; exit 2; }
       since="$2"
+      shift 2
+      ;;
+    --after)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      after="$2"
       shift 2
       ;;
     --project)
@@ -121,6 +138,14 @@ case "$since" in
     ;;
 esac
 
+after_epoch=''
+if [ -n "$after" ]; then
+  if ! after_epoch="$(parse_after "$after")"; then
+    printf '%s\n' '--after must be epoch seconds, YYYY-MM-DD, or YYYY-MM-DDTHH:MM:SS.' >&2
+    exit 2
+  fi
+fi
+
 projects_dir="${CLAUDE_PROJECTS_DIR:-$HOME/.claude/projects}"
 if [ ! -d "$projects_dir" ]; then
   printf 'Claude projects directory not found: %s\n' "$projects_dir" >&2
@@ -142,6 +167,9 @@ roster_source='/dev/null'
 
 now=$(date +%s)
 cutoff=$((now - since * 86400))
+if [ -n "$after_epoch" ] && [ "$after_epoch" -gt "$cutoff" ]; then
+  cutoff="$after_epoch"
+fi
 rows=''
 transcript_count=0
 model_found=0

@@ -85,6 +85,12 @@ See `settings.example.json` in the repo root for the full file this snippet live
   runs `cat big.log` three levels down) passes through silently. This is the same limit the root
   `CLAUDE.md`'s hook backstop calls out generally: the Bash-matching hooks are a backstop, not a
   guarantee.
+- **`scout-model-pin.sh` only sees agents the model spawns by tool call.** A subagent launched by a
+  slash command or a skill (including any skill with `context: fork`) never emits a `Task`
+  `PreToolUse` event, so the hook never runs and the agent inherits the lead's model. Measured over
+  one week on a Fable/Opus lead: 174 of 175 tool-spawned `general-purpose` agents were pinned
+  correctly, against 1 of 8 slash-command-launched ones. Pin those in the skill's own frontmatter
+  instead; a hook cannot reach that spawn path.
 - **`bin/bulk-read` answers lack reliable line numbers.** They're good enough to decide *whether*
   to read further and *where*, not to edit from directly — an edit still needs a direct scoped
   `Read` of the section the answer points to.

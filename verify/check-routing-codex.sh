@@ -4,12 +4,23 @@ set -u
 
 usage() {
   cat <<'EOF'
-Usage: check-routing-codex.sh [--since N] [--json] [--roster FILE]
+Usage: check-routing-codex.sh [--since N] [--after TIMESTAMP] [--json] [--roster FILE]
                               [--codex-home DIR] [--log FILE]
 
 By default, reads subagent transcripts under ~/.codex/sessions and
 ~/.codex/archived_sessions. --log adds legacy hook or forwarder JSONL rows.
 EOF
+}
+
+parse_after() {
+  case "$1" in
+    ''|*[!0-9]*) ;;
+    *) printf '%s' "$1"; return 0 ;;
+  esac
+  date -d "$1" +%s 2>/dev/null && return 0
+  date -j -f '%Y-%m-%dT%H:%M:%S' "$1" +%s 2>/dev/null && return 0
+  date -j -f '%Y-%m-%d' "$1" +%s 2>/dev/null && return 0
+  return 1
 }
 
 command -v jq >/dev/null 2>&1 || {
@@ -18,6 +29,7 @@ command -v jq >/dev/null 2>&1 || {
 }
 
 since=7
+after=''
 json_output=0
 roster=''
 codex_home="${CODEX_HOME:-$HOME/.codex}"
@@ -28,6 +40,11 @@ while [ "$#" -gt 0 ]; do
     --since)
       [ "$#" -ge 2 ] || { usage >&2; exit 2; }
       since="$2"
+      shift 2
+      ;;
+    --after)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      after="$2"
       shift 2
       ;;
     --json)
@@ -67,6 +84,14 @@ case "$since" in
     ;;
 esac
 
+after_epoch=''
+if [ -n "$after" ]; then
+  if ! after_epoch="$(parse_after "$after")"; then
+    printf '%s\n' '--after must be epoch seconds, YYYY-MM-DD, or YYYY-MM-DDTHH:MM:SS.' >&2
+    exit 2
+  fi
+fi
+
 if [ -n "$roster" ]; then
   if [ ! -f "$roster" ]; then
     printf 'Roster file not found: %s\n' "$roster" >&2
@@ -85,6 +110,9 @@ fi
 
 now="$(date +%s)"
 cutoff="$((now - since * 86400))"
+if [ -n "$after_epoch" ] && [ "$after_epoch" -gt "$cutoff" ]; then
+  cutoff="$after_epoch"
+fi
 find_days="$((since + 1))"
 
 transcript_rows() {

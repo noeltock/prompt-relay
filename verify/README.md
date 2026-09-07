@@ -20,6 +20,15 @@ bash verify/check-routing-codex.sh --since 7
 Use `--json` for one JSON object per delegation. Both commands accept `--roster FILE`; without it
 they check `./.prompt-relay-roster`, then `$HOME/.prompt-relay-roster`.
 
+`--since N` is whole days, so it cannot exclude yesterday evening's runs from a run this morning.
+`--after TIMESTAMP` sets an absolute floor (epoch seconds, `YYYY-MM-DD`, or `YYYY-MM-DDTHH:MM:SS`)
+and takes whichever of the two is later. Pass your install time on the first run: a roster written
+today is otherwise applied to delegations that predate it, which fails for work that was never
+misrouted.
+
+The `DATE` column shows the transcript's own UTC timestamp, while the filters compare file mtime.
+The instant is the same either way, but read a `--after` value off your clock, not off the column.
+
 ## Roster
 
 Write one rule per line: `agent-role expected-model-substring [expected-effort]`.
@@ -36,7 +45,9 @@ runner               gpt-5.6-luna      medium
 `MISMATCH` means observed model/effort did not satisfy the rule. `UNVERIFIED` means the row records
 only a request or lacks an observed field required by the roster. Either status exits 1. A row
 without a roster rule is shown but does not fail. Common failures are an untyped spawn inheriting
-the parent, an unavailable pin falling back, or a forwarder logging intent instead of evidence.
+the parent, a skill- or slash-command-launched agent inheriting the lead because no `Task` tool call
+fired for a hook to catch, an unavailable pin falling back, or a forwarder logging intent instead of
+evidence.
 
 ## How the Codex check works
 

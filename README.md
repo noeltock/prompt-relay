@@ -57,7 +57,9 @@ like anything else. [`hooks/claude/`](hooks/claude/) adds the backstop for Claud
 
 - a large unscoped `Read` is blocked and redirected to a scoped read, a scout, or `bin/bulk-read`
 - a bare `cat`/`head`/`tail` on a large file is blocked the same way; piped and ranged reads pass
-- an unpinned `Explore`/`general-purpose` spawn is pinned to your cheap model instead of inheriting the lead
+- an unpinned `Explore`/`general-purpose` spawn *made by tool call* is pinned to your cheap model
+  instead of inheriting the lead (skill- and slash-command-launched agents emit no such call — pin
+  those in the skill's own frontmatter)
 
 [`bin/bulk-read`](bin/bulk-read) is the stateless worker the deny message points to: it sends the files
 plus your question to a cheap model in one shot and returns bullets, so the corpus never enters the

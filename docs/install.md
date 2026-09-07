@@ -151,7 +151,9 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
 3. Copy `profiles/codex-agents/*.toml` into `~/.codex/agents/` and edit only the model/effort pins
    for your roster.
 4. Write the matching `.prompt-relay-roster`, run one harmless canary per pair, then run
-   `bash verify/check-routing-codex.sh --since 1 --roster ~/.prompt-relay-roster`.
+   `bash verify/check-routing-codex.sh --since 1 --roster ~/.prompt-relay-roster`. The roster
+   applies to every delegation in the window, including runs from before the roster existed;
+   pass `--after` with your install time to scope it to new work.
 5. Treat the install as unverified until the transcript shows the intended model and effort.
 6. Start a new Codex task so the updated lead default, instructions, and custom-agent registry load
    together; finish the old task with the canonical installation receipt above.
@@ -171,7 +173,8 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
    and `bin/bulk-read` to `~/.claude/bin/bulk-read`, `chmod +x` both, then merge the `env` and
    `hooks` blocks from `settings.example.json` in. See `hooks/claude/README.md`.
 7. Run `verify/check-routing.sh` after your next few delegations and check the models match your
-   roster.
+   roster. The roster applies to every delegation in the window, including runs from before it
+   existed; pass `--after` with your install time to scope it to new work.
 8. [Claude Code normally watches existing user/project agent directories](https://code.claude.com/docs/en/sub-agents)
    and applies edits on the next delegation. Restart when the agents directory did not exist at
    session start, when it came from `--add-dir`, or when the session disabled slash commands;
