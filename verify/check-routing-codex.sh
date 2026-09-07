@@ -30,6 +30,7 @@ command -v jq >/dev/null 2>&1 || {
 
 since=7
 after=''
+after_set=0
 json_output=0
 roster=''
 codex_home="${CODEX_HOME:-$HOME/.codex}"
@@ -45,6 +46,7 @@ while [ "$#" -gt 0 ]; do
     --after)
       [ "$#" -ge 2 ] || { usage >&2; exit 2; }
       after="$2"
+      after_set=1
       shift 2
       ;;
     --json)
@@ -85,7 +87,7 @@ case "$since" in
 esac
 
 after_epoch=''
-if [ -n "$after" ]; then
+if [ "$after_set" -eq 1 ]; then
   if ! after_epoch="$(parse_after "$after")"; then
     printf '%s\n' '--after must be epoch seconds, YYYY-MM-DD, or YYYY-MM-DDTHH:MM:SS.' >&2
     exit 2
