@@ -145,12 +145,18 @@ Rules for the Claude-lead direction:
 - **Archive only an exact session ID.** Codex accepts `codex archive <session-id>`. Never archive
   every transcript newer than a marker or matching a time window; concurrent unrelated tasks can
   satisfy those selectors. If no stable ID is available, skip cosmetic cleanup.
-- **Foreground-and-wait, never background.** A detached external worker can be reaped by the
-  harness's process cleanup and wedge at "running" forever with no liveness signal. Run it in the
-  foreground with an explicit timeout; it returns the result directly and can't wedge.
-- **If you must background long work, watch file mtimes — not the output.** A background job's
-  output file usually receives only its *final* message, so byte count ≠ liveness. The target
-  files' modification times are the only true progress signal: no writes for ~15–20 min → kill it.
+- **Never detach the worker.** A detached external worker can be reaped by the harness's process
+  cleanup mid-edit and wedge at "running" forever. Start it in the foreground.
+- **Wait on a liveness signal, never on elapsed time.** A wall-clock timeout kills a slow job for
+  being slow, and an agent that is blocked by one will route around it. Most vendor CLIs expose a
+  per-job timestamp that advances on each turn: poll that. Advancing means alive at any duration,
+  frozen for a few minutes means wedged. `verify/wait-on-liveness.sh` implements this for the Codex
+  companion, exiting 0 finished, 2 still working so call again, 3 wedged, 4 no such job. The 2 is
+  what makes a long job survive a short harness ceiling: poll again rather than kill and restart.
+- **Where no such timestamp exists, fall back to file mtimes — not the output.** A job's output
+  file usually receives only its *final* message, so byte count ≠ liveness. This fallback is blind
+  to a read-only job, which writes nothing and so looks identical to a hang; prefer the timestamp
+  wherever the vendor exposes one. No writes for ~15–20 min → kill it.
   **Scope the kill to that one job's process** — a broad "kill everything from this vendor" also
   destroys other sessions' running work — and **read the killed agent's final message before
   redoing**; it often holds salvageable scoping or design work.

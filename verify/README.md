@@ -29,6 +29,22 @@ misrouted.
 The `DATE` column shows the transcript's own UTC timestamp, while the filters compare file mtime.
 The instant is the same either way, but read a `--after` value off your clock, not off the column.
 
+## Waiting on a job
+
+```bash
+bash verify/wait-on-liveness.sh --latest
+bash verify/wait-on-liveness.sh --id <job-id> --budget 480 --stall 300
+```
+
+Polls the companion's per-job `updatedAt`, which advances on each turn, instead of imposing a
+deadline. Exits **0** finished, **2** still working so call again, **3** wedged (`updatedAt` frozen
+past `--stall`), **4** no such job.
+
+The **2** is the useful one. `--budget` defaults to 480 seconds so a call always returns inside a
+600-second harness ceiling; a job that outlives it is polled again rather than killed and restarted.
+A slow job and a hung job therefore stop sharing a symptom, which a wall-clock timeout cannot
+achieve.
+
 ## Roster
 
 Write one rule per line: `[harness:]agent-role expected-model-substring [expected-effort]`.
