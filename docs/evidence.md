@@ -82,7 +82,7 @@ allowance savings remain self-reported.
 
 Signals: persistence ✓ · velocity ✓ · credibility ✓ · corroboration ✓.
 
-The current Codex profile uses Luna/high for bounded implementation and Astra/high for demanding implementation; the research below describes earlier options.
+The current Codex profile uses Luna/high for bounded implementation and Sol/medium for demanding implementation; the research below describes earlier options.
 
 ### Terra for normal implementation; Luna for bounded leaves — `real signal`
 

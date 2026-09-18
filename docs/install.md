@@ -45,7 +45,7 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
    |---|---|---|---|---|---|---|
    | **Claude only** | Opus (low) | Sonnet (low) | Sonnet (high) | Opus (high) | Sonnet (low) | Haiku |
    | **Claude + Codex** | Opus (low) | Codex cheap tier | Codex mid tier (xhigh) | strong OpenAI → best Claude | Sonnet | Haiku |
-   | **Codex only** ([see profile](../profiles/codex-AGENTS.md)) | chosen lead and effort | Luna (high) | Astra (high) | Astra (medium, manual) | Luna (medium) | Luna (medium) |
+   | **Codex only** ([see profile](../profiles/codex-AGENTS.md)) | chosen lead and effort | Luna (high) | Sol (medium) | Astra (medium, manual) | Luna (medium) | Luna (medium) |
    | **One sub / simplest** | your best model (low) | *(inline)* | *(inline)* | your best (high) | your cheapest | your cheapest |
    | **API keys only** | best model (low) | cheapest capable | mid, higher effort | best (high) | cheapest | cheapest |
 

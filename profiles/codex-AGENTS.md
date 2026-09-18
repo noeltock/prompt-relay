@@ -61,7 +61,7 @@ The shipped example roster starts bounded implementation on Luna:
 |---|---|---|---|
 | `lead` | interactive session | your chosen lead and effort | scopes, decides, reviews, integrates |
 | `coder-low` | `coder_low` | Luna, high | normal implementation after scope is clear |
-| `coder-high` | `coder_high` | Astra, high | messy diffs or judgment among visible patterns |
+| `coder-high` | `coder_high` | Sol, medium | messy diffs or judgment among visible patterns |
 | `advisor` | `advisor` | Astra, medium | manual second opinion; read-only |
 | `qa` | `qa` | Luna, medium | executes a named check matrix; never fixes |
 | `runner` | `runner` | Luna, medium | searches, transforms, fetches, and other bounded leaf work |
@@ -204,7 +204,7 @@ simple:
 
 ```text
 coder_low   gpt-5.6-luna    high
-coder_high  gpt-6-astra     high
+coder_high  gpt-5.6-sol     medium
 advisor     gpt-6-astra     medium
 qa          gpt-5.6-luna    medium
 runner      gpt-5.6-luna    medium

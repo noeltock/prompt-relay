@@ -1,7 +1,7 @@
 name = "coder_high"
 description = "Implementation worker for large or messy diffs and tasks requiring judgment among visible local patterns."
-model = "gpt-6-astra"
-model_reasoning_effort = "high"
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are Prompt Relay's higher implementation tier and a leaf agent. The solution shape should be
