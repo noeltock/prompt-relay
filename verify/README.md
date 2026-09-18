@@ -80,11 +80,13 @@ every existing row with the harness it was written for, then add the Claude rows
 
 ```text
 # Codex custom role   model             effort
+codex:coder_small     gpt-5.6-luna      high
 codex:coder_low       gpt-5.6-luna      high
-codex:coder_high      gpt-5.6-terra     high
-codex:advisor         gpt-6-astra       medium
-codex:qa              gpt-5.6-luna      medium
+codex:coder_high      gpt-5.6-sol       medium
 codex:runner          gpt-5.6-luna      medium
+codex:qa              gpt-5.6-luna      medium
+codex:advisor         gpt-6-astra       medium
+codex:council         gpt-6-astra       high
 
 # Claude agent type    model             effort
 claude:advisor         claude-fable      medium

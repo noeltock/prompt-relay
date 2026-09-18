@@ -211,6 +211,17 @@ while :; do
   fi
 
   if [ $(( now - started )) -ge "$BUDGET" ]; then
+    # "Call again" is itself a claim: it says the job is alive and worth waiting
+    # on. If the most recent fetch failed we cannot support even that, and with
+    # the shipped defaults (--budget 480 below --stall 600) the budget always
+    # expires first, so continuous unavailability returned exit 2 forever and
+    # reset the unavailable counter on each retry. Exit 2 now requires that the
+    # last poll was a real observation.
+    if [ "$last_poll_ok" -eq 0 ]; then
+      printf 'wait-on-liveness: status unavailable at budget expiry; no verdict about %s\n' \
+        "${tracked:-(latest)}" >&2
+      exit 1
+    fi
     save_state
     printf 'running\t%s\tlast turn %ds ago, call again\n' "${tracked:-?}" "$(( now - last_change ))"
     exit 2

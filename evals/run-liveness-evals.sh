@@ -229,5 +229,30 @@ out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" \
 check "an unwritable state dir is an error, not 'call again'" "$ec|$(printf '%s' "$out" | cut -f1)" "1|" \
   "silently losing state brings the unreachable-stall bug straight back"
 
+# 13. BUDGET EXPIRY IS ALSO A CLAIM. "Call again" asserts the job is alive and
+#     worth waiting on. With the shipped defaults --budget (480) is below --stall
+#     (600), so the budget always expires first: continuous unavailability
+#     returned exit 2 forever, resetting the unavailable counter every retry.
+#     Both shapes below use budget < stall, which is the configuration that hides
+#     it.
+check "unavailable at budget expiry, never sighted, is not 'running'" \
+  "$(run_wait 1 4 "INVALID")" \
+  "1|" "it reported 'running' for a job it had never once observed"
+
+: > "$CURSOR"
+printf '%s\n' "$(running j13 2026-09-18T01:00:01Z)" "INVALID" > "$SEQ"
+out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" LIVENESS_STATE_DIR="$STATE" \
+       bash "$WAIT" --id j13 --budget 3 --stall 9 --interval 1 2>/dev/null)"; ec=$?
+check "unavailable at budget expiry after a sighting is not 'running'" "$ec|$(printf '%s' "$out" | cut -f1)" "1|" \
+  "one past sighting does not license a liveness claim now"
+
+# 13b. LOAD-BEARING NEGATIVE. The gate must key on the LAST poll being a real
+#      observation, not on whether anything ever failed, or a job that is
+#      genuinely running stops being pollable.
+check "a genuinely running job still says call again" \
+  "$(run_wait 2 9 "$(running j13b 2026-09-18T01:00:01Z)" "$(running j13b 2026-09-18T01:00:02Z)" \
+                  "$(running j13b 2026-09-18T01:00:03Z)" "$(running j13b 2026-09-18T01:00:04Z)")" \
+  "2|running" "exit 2 is the resumable path and must survive this change"
+
 printf '\nResults: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
