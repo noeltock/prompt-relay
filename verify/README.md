@@ -31,16 +31,56 @@ The instant is the same either way, but read a `--after` value off your clock, n
 
 ## Roster
 
-Write one rule per line: `agent-role expected-model-substring [expected-effort]`.
+Write one rule per line: `[harness:]agent-role expected-model-substring [expected-effort]`.
+
+The `harness:` scope is optional. A bare name applies to both verifiers, which is what every
+roster written before this existed contains, so old files keep parsing unchanged.
+
+**But parsing unchanged is not the same as correct.** If your existing roster has an `advisor` row,
+it is bare, so it still reaches both verifiers and the Claude one still fails on every advisor run.
+Merging the scope support does not fix that; editing the roster does. Migrate in one pass: prefix
+every existing row with the harness it was written for, then add the Claude rows below.
 
 ```text
-# Codex custom role  model             effort
-coder_low            gpt-5.6-terra     medium
-coder_high           gpt-5.6-terra     high
-advisor              gpt-6-astra       medium
-qa                   gpt-5.6-luna      medium
-runner               gpt-5.6-luna      medium
+# Codex custom role   model             effort
+codex:coder_low       gpt-5.6-terra     medium
+codex:coder_high      gpt-5.6-terra     high
+codex:advisor         gpt-6-astra       medium
+codex:qa              gpt-5.6-luna      medium
+codex:runner          gpt-5.6-luna      medium
+
+# Claude agent type    model             effort
+claude:advisor         claude-fable      medium
+claude:Explore         claude-haiku
+claude:general-purpose claude-sonnet
+claude:coder_low       claude-sonnet     medium
+claude:coder_high      claude-sonnet
+claude:qa              claude-sonnet     medium
+claude:runner          claude-haiku
 ```
+
+**Scope the rows for any role that exists on both sides.** `advisor` is the one that bites: it is a
+two-stage panel, the Codex stage runs `gpt-6-astra` and the Claude stage runs Fable. A single
+unscoped `advisor gpt-6-astra medium` row therefore makes the Claude verifier report `MISMATCH` on
+every advisor run it ever sees, and exit 1 with it. Scoping the row is the fix; there is nothing
+wrong with the routing it was flagging.
+
+**The Claude column is the agent type, verbatim.** It is what appears in the `AGENT` column of a
+run: the `name:` from `~/.claude/agents/<name>.md` for a custom agent, or the built-in type
+(`Explore`, `general-purpose`) for a scout. Your own agent names go here, so this column will not
+match the Codex one unless you happen to have named them the same. It is case-sensitive:
+`Explore`, not `explore`.
+
+**Check the `Coverage` line before you trust a clean run.** A satisfied rule, a rule scoped to the
+other harness and no rule at all all print an empty status, so a roster that matches nothing looks
+identical to a roster where everything passed. The verifier now says how many delegations were
+actually judged and names the agent types it skipped. A roster carrying only Codex role names will read
+`0 of N delegations were checked` on the Claude side, which is the failure mode this line exists to
+make visible: a clean run over a roster that checks nothing.
+
+**Only set an expected effort where effort is observable.** Agents whose transcripts show `?` in the
+`EFFORT` column (Haiku runners, for instance) will never satisfy an effort rule. Leave the third
+column off for those and the model alone is checked.
 
 `MISMATCH` means observed model/effort did not satisfy the rule. `UNVERIFIED` means the row records
 only a request or lacks an observed field required by the roster. Either status exits 1. A row

@@ -10,8 +10,21 @@ command -v jq >/dev/null 2>&1 || {
   exit 1
 }
 
-FIXTURES="$(mktemp -d -t codex-routing-evals.XXXXXX)"
+FIXTURES="$(mktemp -d -t codex-routing-evals.XXXXXX)" || {
+  printf '%s\n' "$(basename "$0"): mktemp -d failed, refusing to run" >&2
+  exit 1
+}
+# An empty or non-directory FIXTURES would make the EXIT trap below operate on
+# the wrong path. A Codex review of this file trashed the repository checkout
+# that way (2026-09-18): mktemp failed under a sandbox, FIXTURES was empty, and
+# `trash "$FIXTURES"` resolved to the working directory.
+case "$FIXTURES" in
+  /*) [ -d "$FIXTURES" ] || { printf '%s\n' "$(basename "$0"): fixture dir is not a directory" >&2; exit 1; } ;;
+  *)  printf '%s\n' "$(basename "$0"): refusing a non-absolute fixture dir" >&2; exit 1 ;;
+esac
 cleanup() {
+  # Never act on an unset, empty or already-removed path.
+  [ -n "${FIXTURES:-}" ] && [ -d "$FIXTURES" ] || return 0
   if command -v trash >/dev/null 2>&1; then
     trash "$FIXTURES"
   else
