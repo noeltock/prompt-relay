@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deterministic evals for verify/wait-on-liveness.sh.
+# Deterministic evals for wait-on-liveness.sh.
 #
 # Every case drives a STUB companion, so no model runs and no Codex is needed.
 # The stub reads a scripted sequence of status payloads from a file, one JSON
@@ -64,8 +64,11 @@ check() {
 }
 
 # 1. A job that keeps taking turns and then disappears from running[] is finished.
-check "finishes when the job leaves running[]" \
-  "$(run_wait "$(running j1 2026-09-18T01:00:01Z)" "$(running j1 2026-09-18T01:00:02Z)" "$(idle)")" \
+#    Two idle polls, not one: --misses defaults to 2, so a single empty reply is
+#    deliberately not a verdict. A one-idle fixture here would pass or fail on
+#    timing rather than on behaviour.
+BUDGET=6 check "finishes when the job leaves running[]" \
+  "$(run_wait "$(running j1 2026-09-18T01:00:01Z)" "$(running j1 2026-09-18T01:00:02Z)" "$(idle)" "$(idle)")" \
   "0|finished" "the ordinary success path"
 
 # 2. THE CASE THAT MOTIVATED THIS. updatedAt keeps advancing past the budget.
@@ -90,10 +93,28 @@ check "no matching job exits 4, not 3" \
   "4|" "a wrong id must not look like a hang"
 
 # 5. LOAD-BEARING NEGATIVE. A transient status failure mid-run must not be read
-#    as either finished or stalled while turns are still advancing around it.
-check "a single bad status reply is not a verdict" \
-  "$(run_wait "$(running j5 2026-09-18T01:00:01Z)" "INVALID" "$(running j5 2026-09-18T01:00:02Z)" "$(idle)")" \
-  "0|finished" "status flaking must not kill a healthy job"
+#    as finished. Asserting the final outcome here would be INERT: the sequence
+#    ends idle either way, so a script that quits at the bad reply and one that
+#    rides through it both report "finished". The run must therefore end while
+#    the job is still alive, so a premature exit shows up as a different code.
+BUDGET=4 STALL=9 check_flake="$(run_wait \
+  "$(running j5 2026-09-18T01:00:01Z)" "INVALID" "$(running j5 2026-09-18T01:00:02Z)" \
+  "$(running j5 2026-09-18T01:00:03Z)" "$(running j5 2026-09-18T01:00:04Z)")"
+check "a single bad status reply is not a verdict" "$check_flake" \
+  "2|running" "one flaky status call reads exactly like a job leaving running[]"
+
+# 5b. Two consecutive empties ARE a finish: the tolerance must not become a hang.
+check "consecutive empties do mean finished" \
+  "$(run_wait "$(running j5b 2026-09-18T01:00:01Z)" "$(idle)" "$(idle)" "$(idle)")" \
+  "0|finished" "--misses adds tolerance, it must not remove the success path"
+
+# 5c. A second job appearing must not become the thing being waited on. Under
+#     --latest the first sighting latches an id; when THAT id leaves running[],
+#     the answer is finished, regardless of what else started meanwhile.
+check "--latest follows the job it latched, not the newest" \
+  "$(run_wait "$(running first 2026-09-18T01:00:01Z)" "$(running second 2026-09-18T01:00:02Z)" \
+              "$(running second 2026-09-18T01:00:03Z)" "$(running second 2026-09-18T01:00:04Z)")" \
+  "0|finished" "waiting on the wrong job while printing the right name is the worst outcome"
 
 # 6. A specific --id that is not the running job must not silently latch onto it.
 : > "$CURSOR"

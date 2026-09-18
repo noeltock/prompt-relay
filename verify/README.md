@@ -40,6 +40,14 @@ Polls the companion's per-job `updatedAt`, which advances on each turn, instead 
 deadline. Exits **0** finished, **2** still working so call again, **3** wedged (`updatedAt` frozen
 past `--stall`), **4** no such job.
 
+Two ambiguities it resolves rather than guesses at. An empty status result means *either* the job
+finished *or* the status call flaked, so it takes `--misses` consecutive empties (default 2) to call
+a job finished. And `--latest` latches onto the newest running job at first sighting and then
+follows that id, so a second job starting cannot quietly become the thing being waited on.
+
+Set `--stall` above the longest single turn you expect. The signal is per-turn, so a job in the
+middle of a long turn is legitimately quiet; too tight a stall window reads that as a hang.
+
 The **2** is the useful one. `--budget` defaults to 480 seconds so a call always returns inside a
 600-second harness ceiling; a job that outlives it is polled again rather than killed and restarted.
 A slow job and a hung job therefore stop sharing a symptom, which a wall-clock timeout cannot
