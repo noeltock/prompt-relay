@@ -38,10 +38,14 @@ the work yourself, natively, with your own tools. A vendor outage must never blo
 3. **Pass the model and effort explicitly on every call.** An unpinned call silently runs the
    vendor's default tier, which is usually the expensive one. This is the single most common way
    cross-vendor routing costs more than no routing at all.
-4. **Run it in the foreground and wait.** Give the call an explicit timeout (10 minutes is a
-   reasonable default for mechanical work). Never background it and never launch it inside a
-   background shell: a detached worker can be reaped by the harness's process cleanup and then sit
-   at "running" forever with no liveness signal, which looks identical to slow progress.
+4. **Wait on liveness, not on the clock.** A timeout is a deadline, and a deadline answers the
+   wrong question: a job that takes twelve minutes is not a job that has failed. Most vendor CLIs
+   expose a per-job timestamp that advances on each turn. Poll that instead. Moving means alive at
+   any duration; frozen for a few minutes means wedged, whatever the elapsed total says.
+   `verify/wait-on-liveness.sh` does this against the Codex companion and is the pattern to copy
+   for another vendor. Still never launch the worker inside a background shell: a detached writer
+   can be reaped by the harness's process cleanup mid-edit. Start it without a blocking wait flag
+   so the call returns a job id immediately, then poll.
 5. **Separate the request from the observation.** Nothing else can see this call — the harness
    records only that *this* wrapper ran, on its cheap Claude model, not what you shelled out to.
    Never write the requested model into an observed-model field. Append a request-only row after

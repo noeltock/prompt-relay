@@ -137,9 +137,13 @@ transcript_rows() {
     [ "$first_kind" = 'subagent' ] || continue
     if ! row="$(jq -cs --arg transcript "$transcript" --argjson cutoff "$cutoff" '
       ([.[] | select(.type == "session_meta")][0] // null) as $meta
-      | ([.[] | select(.type == "turn_context")][-1] // null) as $ctx
+      | ([.[] | select(.type == "turn_context")]) as $contexts
       | select($meta != null and ($meta.payload.source.subagent? != null))
-      | select((try (($meta.payload.timestamp[0:19] + "Z") | fromdateiso8601) catch 0) >= $cutoff)
+      # Inspect every context: a reused worker can predate the cutoff, and a
+      # later matching route must not conceal an earlier mismatch in the window.
+      | (if ($contexts | length) > 0 then $contexts[] else null end) as $ctx
+      | ($ctx.timestamp // $meta.payload.timestamp) as $ts
+      | select((try (($ts[0:19] + "Z") | fromdateiso8601) catch 0) >= $cutoff)
       | ([$meta.payload.source.subagent.thread_spawn.agent_role,
           $meta.payload.agent_path,
           $meta.payload.source.subagent.thread_spawn.agent_path]
@@ -147,7 +151,9 @@ transcript_rows() {
          | .[0] // "?") as $raw_role
       | (($raw_role | split("/")[-1]) | split("__")[0]) as $role
       | {
-          ts: $meta.payload.timestamp,
+          ts: $ts,
+          session_created_at: $meta.payload.timestamp,
+          turn_id: ($ctx.payload.turn_id // ""),
           harness: "codex-transcript",
           role: $role,
           model: ($ctx.payload.model // "unknown"),
@@ -156,7 +162,8 @@ transcript_rows() {
                    // $ctx.payload.effort
                    // ""),
           agent_id: ($meta.payload.id // "?"),
-          parent_thread_id: ($meta.payload.parent_thread_id // ""),
+          parent_thread_id: ($meta.payload.source.subagent.thread_spawn.parent_thread_id
+                             // $meta.payload.parent_thread_id // ""),
           transcript_path: $transcript,
           evidence: $transcript,
           observation: "observed"
@@ -209,7 +216,7 @@ legacy_rows() {
 raw_rows="$(transcript_rows; legacy_rows)"
 
 if [ -z "$raw_rows" ]; then
-  [ "$json_output" -eq 1 ] || printf '%s\n' 'No matching Codex delegations found.'
+  [ "$json_output" -eq 1 ] || printf '%s\n' 'No matching Codex observations found.'
   exit 0
 fi
 
@@ -217,11 +224,18 @@ roster_source='/dev/null'
 [ -n "$roster" ] && roster_source="$roster"
 
 rows="$(printf '%s\n' "$raw_rows" | jq -c --rawfile roster "$roster_source" '
+  # The agent column may carry an optional harness scope: claude:advisor or
+  # codex:advisor. A bare name is unscoped and applies to both, so every roster
+  # written before this change keeps working untouched. The scope exists because
+  # "advisor" names a role on BOTH sides: its Codex stage runs gpt-6-astra and
+  # its Claude stage runs Fable, so one flat rule made whichever side it did not
+  # describe report MISMATCH on every run, and exit 1 with it.
   def roster_rules:
     [ $roster | split("\n")[]
       | gsub("^[[:space:]]+|[[:space:]]+$"; "")
       | select(length > 0 and (startswith("#") | not))
-      | capture("^(?<agent>[^[:space:]]+)[[:space:]]+(?<model>[^[:space:]]+)(?:[[:space:]]+(?<effort>[^[:space:]]+))?$") ];
+      | capture("^(?<scope>(?:[A-Za-z0-9_-]+):)?(?<agent>[^[:space:]]+)[[:space:]]+(?<model>[^[:space:]]+)(?:[[:space:]]+(?<effort>[^[:space:]]+))?$")
+      | select((.scope // "") == "" or (.scope | ascii_downcase) == "codex:") ];
   . as $row
   | (roster_rules | map(select(.agent == $row.role)) | .[0] // null) as $rule
   | (if $rule == null then ""
@@ -280,7 +294,27 @@ printf '%s\n' "$rows" | jq -sr '
   | map({role:.[0].role, model:.[0].model, effort:.[0].effort, count:length})
   | sort_by(.count) | reverse
   | .[]
-  | "  \(.role) / \(.model) / \(.effort): \(.count) delegation\(if .count == 1 then "" else "s" end)"
+  | "  \(.role) / \(.model) / \(.effort): \(.count) observation\(if .count == 1 then "" else "s" end)"
+'
+
+# Coverage. Same reasoning as the Claude checker: a satisfied rule, a rule scoped
+# to the other harness and no rule at all all report an empty status, so a roster
+# that matches nothing is indistinguishable from one where everything passed.
+# Harness scoping makes that easier to hit, because a claude-only roster now
+# filters down to nothing here.
+printf '\nCoverage\n'
+printf '%s\n' "$rows" | jq -sr '
+  (map(select((.expected_model // "") != "")) | length) as $checked
+  | length as $total
+  | if $checked == 0 then
+      "  0 of \($total) observations were checked against a roster rule - the roster matches no role seen here."
+    else
+      "  \($checked) of \($total) observations were checked against a roster rule."
+      + (if $checked < $total then
+           "\n  Unchecked roles: "
+           + ((map(select((.expected_model // "") == "")) | map(.role) | unique | join(", ")))
+         else "" end)
+    end
 '
 
 if [ "$issue_count" -gt 0 ]; then

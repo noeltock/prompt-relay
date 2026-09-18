@@ -27,11 +27,18 @@ read_row() {
   [ -f "$meta" ] && meta_source="$meta"
 
   jq -cs --rawfile roster "$roster_source" --slurpfile meta "$meta_source" '
+    # The agent column may carry an optional harness scope: claude:advisor or
+    # codex:advisor. A bare name is unscoped and applies to both, so every roster
+    # written before this change keeps working untouched. The scope exists because
+    # "advisor" names a role on BOTH sides: its Codex stage runs gpt-6-astra and
+    # its Claude stage runs Fable, so one flat rule made whichever side it did not
+    # describe report MISMATCH on every run, and exit 1 with it.
     def roster_rules:
       [ $roster | split("\n")[]
         | gsub("^[[:space:]]+|[[:space:]]+$"; "")
         | select(length > 0 and startswith("#") | not)
-        | capture("^(?<agent>[^[:space:]]+)[[:space:]]+(?<model>[^[:space:]]+)(?:[[:space:]]+(?<effort>[^[:space:]]+))?$") ];
+        | capture("^(?<scope>(?:[A-Za-z0-9_-]+):)?(?<agent>[^[:space:]]+)[[:space:]]+(?<model>[^[:space:]]+)(?:[[:space:]]+(?<effort>[^[:space:]]+))?$")
+        | select((.scope // "") == "" or (.scope | ascii_downcase) == "claude:") ];
     def text_or_question:
       if type == "string" and length > 0 then . else "?" end;
     reduce .[] as $line (
@@ -220,6 +227,16 @@ done <<EOF
 $worker_rows
 EOF
 
+# A transcript whose jq run fails emits nothing (worker errors are suppressed), so
+# it silently leaves the coverage denominator. Compare candidates with survivors
+# and say so, rather than reporting coverage over the subset that happened to parse.
+row_count=0
+if [ -n "$rows" ]; then
+  row_count="$(printf '%s' "$rows" | grep -c '^{' || true)"
+fi
+unreadable=$(( ${#candidate_paths[@]} - row_count ))
+[ "$unreadable" -lt 0 ] && unreadable=0
+
 if [ "$transcript_count" -gt 0 ] && [ "$model_found" -eq 0 ]; then
   printf '%s\n' 'The Claude on-disk format appears to have changed.' >&2
   printf '%s\n' 'Expected .message.model on "type":"assistant" lines and agentType in the .meta.json sibling.' >&2
@@ -281,6 +298,28 @@ printf '%s' "$rows" | jq -sr '
   | .[]
   | "  \(.agent_type) / \(.model) / \(.effort): \(.count) delegation\(if .count == 1 then "" else "s" end), \(.output) output tokens"
 '
+
+# Coverage. A satisfied rule, an out-of-scope rule and no rule at all all print
+# an empty status, so a roster that matches nothing looks exactly like a roster
+# where everything passed. Say how many rows were actually judged: the Claude
+# side ran for weeks checking one row out of eight without that being visible.
+printf '\nCoverage\n'
+printf '%s' "$rows" | jq -sr '
+  (map(select((.expected_model // "") != "")) | length) as $checked
+  | length as $total
+  | if $checked == 0 then
+      "  0 of \($total) delegations were checked against a roster rule - the roster matches no agent type seen here."
+    else
+      "  \($checked) of \($total) delegations were checked against a roster rule."
+      + (if $checked < $total then
+           "\n  Unchecked agent types: "
+           + ((map(select((.expected_model // "") == "")) | map(.agent_type) | unique | join(", ")))
+         else "" end)
+    end
+'
+if [ "$unreadable" -gt 0 ]; then
+  printf '  %d transcript(s) could not be read and are absent from the counts above.\n' "$unreadable"
+fi
 
 if [ "$nested_count" -gt 0 ]; then
   printf '\n! A delegate spawned its own delegate.\n'

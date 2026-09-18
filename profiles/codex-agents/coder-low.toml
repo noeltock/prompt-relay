@@ -1,7 +1,7 @@
 name = "coder_low"
 description = "Implementation worker for well-defined coding and building tasks with clear acceptance criteria."
-model = "gpt-5.6-terra"
-model_reasoning_effort = "medium"
+model = "gpt-5.6-luna"
+model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are Prompt Relay's normal implementation worker and a leaf agent. The parent owns scope,
