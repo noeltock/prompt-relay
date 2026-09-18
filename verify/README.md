@@ -43,8 +43,10 @@ past `--stall`), **4** no such job.
 Three ambiguities it resolves rather than guesses at.
 
 A status call that fails or returns junk is reported as *unavailable*, which is distinct from a
-valid reply that does not list the job. Only the latter counts toward completion, and it takes
-`--misses` of them (default 2), so a run of failed fetches can never add up to "finished".
+valid reply that does not list the job. Absent status is absent information, so it can never produce
+**any** verdict about the job: not "finished", not "stalled", not "no such job". Only a valid reply
+showing the job absent counts toward completion, and it takes `--misses` of them (default 2).
+Status that stays unavailable for a whole `--stall` window exits **1**, an environment error.
 
 `--latest` latches onto the newest running job at first sighting and then follows that id, so a
 second job starting cannot quietly become the thing being waited on.
@@ -52,7 +54,9 @@ second job starting cannot quietly become the thing being waited on.
 The last observed turn is **persisted per job id** across calls (`--state-dir`, default under
 `$TMPDIR`). `--budget` sits below `--stall` by design so a call always returns inside a harness
 ceiling, which means a stall is only ever reachable across several calls; without persistence each
-retry reset the clock and a wedged job reported "running" forever.
+retry reset the clock and a wedged job reported "running" forever. A state directory that cannot be
+written is therefore an error (exit 1), not a silent skip: continuing with "call again" would
+reinstate exactly that bug.
 
 Set `--stall` above the longest single turn you expect. The signal is per-turn, so a job in the
 middle of a long turn is legitimately quiet; too tight a stall window reads that as a hang.

@@ -20,9 +20,13 @@
 #                                makes a long job survive a short Bash ceiling
 #   3  stalled                -- updatedAt frozen past --stall; cancel it
 #   4  no such job            -- wrong id, or it finished before the first poll
-#   1  usage or environment error
+#   1  usage or environment error -- including "the status call is not working"
+#      and "state could not be written". Neither is a statement about the job.
 #
-# Two things this deliberately does NOT treat as a verdict:
+# Three things this deliberately does NOT treat as a verdict:
+#   - A status call we cannot make. Absent status is absent information: it says
+#     nothing about whether the job finished, stalled, or never existed, so it
+#     can never produce 0, 3 or 4. Persistent unavailability exits 1.
 #   - A single status call that fails or returns junk. It takes --misses
 #     consecutive empty polls to call a job finished, because one flaky reply
 #     otherwise reads exactly like a job that has left running[].
@@ -106,6 +110,8 @@ last_change="$started"
 tracked="$JOB_ID"
 seen_once=0
 misses=0
+unavailable=0
+last_poll_ok=1
 
 # Liveness state must OUTLIVE one invocation. --budget (480s) is deliberately
 # below --stall (600s) so a call always returns inside the harness ceiling, which
@@ -123,11 +129,21 @@ load_state() {
   last_seen="$f_upd"
   last_change="$f_when"
 }
+# A silent failure here is the stall bug coming back: the caller is told to poll
+# again, the next call finds no state, and the clock restarts forever. So this
+# aborts rather than returning a verdict it cannot support.
 save_state() {
   [ -n "$tracked" ] || return 0
-  mkdir -p "$STATE_DIR" 2>/dev/null || return 0
+  if ! mkdir -p "$STATE_DIR" 2>/dev/null || [ ! -d "$STATE_DIR" ]; then
+    printf 'wait-on-liveness: state dir is not usable: %s\n' "$STATE_DIR" >&2
+    printf 'wait-on-liveness: without persisted state a stall can never be detected across calls.\n' >&2
+    exit 1
+  fi
   state_file="$STATE_DIR/$(printf '%s' "$tracked" | tr -c 'A-Za-z0-9._-' '_').state"
-  printf '%s\t%s\n' "$last_seen" "$last_change" > "$state_file" 2>/dev/null || return 0
+  if ! printf '%s\t%s\n' "$last_seen" "$last_change" > "$state_file" 2>/dev/null; then
+    printf 'wait-on-liveness: could not write state: %s\n' "$state_file" >&2
+    exit 1
+  fi
 }
 clear_state() { [ -n "${state_file:-}" ] && [ -f "$state_file" ] && mv -f "$state_file" "$state_file.done" 2>/dev/null; return 0; }
 
@@ -137,9 +153,12 @@ while :; do
   row="$(poll)"
 
   if [ "$row" = "UNAVAILABLE" ]; then
-    # Tells us nothing. Do not touch misses, do not touch last_change.
-    :
+    # Tells us nothing. Do not touch misses, do not touch last_change, and
+    # record that the most recent observation is not an observation at all.
+    unavailable=$(( unavailable + 1 ))
+    last_poll_ok=0
   elif [ -n "$row" ]; then
+    last_poll_ok=1
     id="${row%%	*}"
     upd="${row#*	}"
     if [ -z "$tracked" ]; then
@@ -156,23 +175,36 @@ while :; do
       last_seen="$upd"
       last_change="$(date +%s)"
     fi
-  elif [ "$seen_once" -eq 1 ]; then
+  else
+    last_poll_ok=1
+    if [ "$seen_once" -eq 1 ]; then
     misses=$(( misses + 1 ))
     if [ "$misses" -ge "$MISSES" ]; then
       clear_state
       printf 'finished\t%s\n' "${tracked:-?}"
       exit 0
     fi
+    fi
+  fi
+
+  # Absent status is absent information. Once the status call has failed for a
+  # whole stall window we stop waiting, but we report the environment, not the
+  # job: "no such job" and "stalled" are both claims we are in no position to
+  # make while we cannot see the job at all.
+  if [ "$last_poll_ok" -eq 0 ] && [ $(( unavailable * INTERVAL )) -ge "$STALL" ]; then
+    printf 'wait-on-liveness: status has been unavailable for %ds; no verdict about %s\n' \
+      "$(( unavailable * INTERVAL ))" "${tracked:-(latest)}" >&2
+    exit 1
   fi
 
   now="$(date +%s)"
 
-  if [ "$seen_once" -eq 0 ] && [ $(( now - started )) -ge "$INTERVAL" ]; then
+  if [ "$seen_once" -eq 0 ] && [ "$last_poll_ok" -eq 1 ] && [ $(( now - started )) -ge "$INTERVAL" ]; then
     printf 'wait-on-liveness: no running job matched %s\n' "${JOB_ID:-(latest)}" >&2
     exit 4
   fi
 
-  if [ "$seen_once" -eq 1 ] && [ $(( now - last_change )) -ge "$STALL" ]; then
+  if [ "$seen_once" -eq 1 ] && [ "$last_poll_ok" -eq 1 ] && [ $(( now - last_change )) -ge "$STALL" ]; then
     clear_state
     printf 'stalled\t%s\t%ds without a turn\n' "${tracked:-?}" "$(( now - last_change ))"
     exit 3

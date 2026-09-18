@@ -88,12 +88,16 @@ run_calls() {  # n budget stall id seq_lines... -> prints the last "exit|stdout"
   local n="$1" budget="$2" stall="$3" id="$4"; shift 4
   : > "$CURSOR"
   printf '%s\n' "$@" > "$SEQ"
+  # Stop at the first terminal answer, which is what a real caller does: only
+  # exit 2 means "call again". Looping past a verdict made the result depend on
+  # which call happened to land on it, so the case passed or failed on timing.
   local out ec i=0
   while [ "$i" -lt "$n" ]; do
     out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" LIVENESS_STATE_DIR="$STATE" \
            bash "$WAIT" --id "$id" --budget "$budget" --stall "$stall" --interval 1 2>/dev/null)"
     ec=$?
     i=$(( i + 1 ))
+    [ "$ec" -eq 2 ] || break
   done
   printf '%s|%s' "$ec" "$(printf '%s' "$out" | head -1 | cut -f1)"
 }
@@ -197,6 +201,33 @@ check "advancing turns across calls do not stall" \
 # 10. A flag that takes a value must be given one, rather than spinning.
 timeout 10 bash "$WAIT" --id >/dev/null 2>&1
 check "--id with no value is a usage error" "$?|" "1|" "it used to loop forever on a missing value"
+
+# 11. UNAVAILABLE STATUS IS NOT A VERDICT ABOUT THE JOB. Absent status is absent
+#     information: it cannot support "no such job" or "stalled" any more than it
+#     can support "finished". Both used to be reachable purely from failed
+#     fetches. It exits 1 (environment) instead.
+check "persistent unavailability never becomes 'no such job'" \
+  "$(run_wait 9 3 "INVALID")" \
+  "1|" "a status call we cannot make says nothing about whether the job exists"
+
+: > "$CURSOR"
+printf '%s\n' "$(running j11 2026-09-18T01:00:01Z)" "INVALID" > "$SEQ"
+out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" LIVENESS_STATE_DIR="$STATE" \
+       bash "$WAIT" --id j11 --budget 12 --stall 3 --interval 1 2>/dev/null)"; ec=$?
+check "unavailability after a sighting never becomes 'stalled'" "$ec|$(printf '%s' "$out" | cut -f1)" "1|" \
+  "a frozen updatedAt is a wedge; an unreadable status is not the same claim"
+
+# 12. A STATE WRITE THAT FAILS MUST NOT RETURN "call again". Silently skipping
+#     the save reinstates the reset-timer bug: the caller polls again, finds no
+#     state, and restarts the clock forever.
+statefile="$FIXTURES/not-a-dir"
+: > "$statefile"
+: > "$CURSOR"
+printf '%s\n' "$(running j12 2026-09-18T01:00:01Z)" "$(running j12 2026-09-18T01:00:02Z)" > "$SEQ"
+out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" \
+       bash "$WAIT" --id j12 --budget 2 --stall 9 --interval 1 --state-dir "$statefile" 2>/dev/null)"; ec=$?
+check "an unwritable state dir is an error, not 'call again'" "$ec|$(printf '%s' "$out" | cut -f1)" "1|" \
+  "silently losing state brings the unreachable-stall bug straight back"
 
 printf '\nResults: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
