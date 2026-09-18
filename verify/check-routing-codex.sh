@@ -300,9 +300,9 @@ printf '%s\n' "$rows" | jq -sr '
   (map(select((.expected_model // "") != "")) | length) as $checked
   | length as $total
   | if $checked == 0 then
-      "  0 of \($total) delegations were checked against a roster rule - the roster matches no role seen here."
+      "  0 of \($total) observations were checked against a roster rule - the roster matches no role seen here."
     else
-      "  \($checked) of \($total) delegations were checked against a roster rule."
+      "  \($checked) of \($total) observations were checked against a roster rule."
       + (if $checked < $total then
            "\n  Unchecked roles: "
            + ((map(select((.expected_model // "") == "")) | map(.role) | unique | join(", ")))

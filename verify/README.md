@@ -40,10 +40,19 @@ Polls the companion's per-job `updatedAt`, which advances on each turn, instead 
 deadline. Exits **0** finished, **2** still working so call again, **3** wedged (`updatedAt` frozen
 past `--stall`), **4** no such job.
 
-Two ambiguities it resolves rather than guesses at. An empty status result means *either* the job
-finished *or* the status call flaked, so it takes `--misses` consecutive empties (default 2) to call
-a job finished. And `--latest` latches onto the newest running job at first sighting and then
-follows that id, so a second job starting cannot quietly become the thing being waited on.
+Three ambiguities it resolves rather than guesses at.
+
+A status call that fails or returns junk is reported as *unavailable*, which is distinct from a
+valid reply that does not list the job. Only the latter counts toward completion, and it takes
+`--misses` of them (default 2), so a run of failed fetches can never add up to "finished".
+
+`--latest` latches onto the newest running job at first sighting and then follows that id, so a
+second job starting cannot quietly become the thing being waited on.
+
+The last observed turn is **persisted per job id** across calls (`--state-dir`, default under
+`$TMPDIR`). `--budget` sits below `--stall` by design so a call always returns inside a harness
+ceiling, which means a stall is only ever reachable across several calls; without persistence each
+retry reset the clock and a wedged job reported "running" forever.
 
 Set `--stall` above the longest single turn you expect. The signal is per-turn, so a job in the
 middle of a long turn is legitimately quiet; too tight a stall window reads that as a hang.
@@ -67,7 +76,7 @@ every existing row with the harness it was written for, then add the Claude rows
 
 ```text
 # Codex custom role   model             effort
-codex:coder_low       gpt-5.6-terra     medium
+codex:coder_low       gpt-5.6-luna      high
 codex:coder_high      gpt-5.6-terra     high
 codex:advisor         gpt-6-astra       medium
 codex:qa              gpt-5.6-luna      medium

@@ -44,19 +44,24 @@ STALL=600       # updatedAt frozen this long => wedged. Must exceed the longest
                 # single turn you expect, or a slow turn reads as a hang: the
                 # signal is per-turn, so a job mid-turn is legitimately quiet.
 INTERVAL=15
-MISSES=2        # consecutive empty polls before believing a job has finished
+MISSES=2        # consecutive ABSENT polls before believing a job has finished
+STATE_DIR="${LIVENESS_STATE_DIR:-${TMPDIR:-/tmp}/wait-on-liveness}"
 
 usage() { sed -n '2,40p' "$0" >&2; exit 1; }
 
+# `--id` with nothing after it used to leave $# unchanged and spin forever.
+need_value() { [ $# -ge 2 ] || { printf 'wait-on-liveness: %s needs a value\n' "$1" >&2; exit 1; }; }
+
 while [ $# -gt 0 ]; do
   case "$1" in
-    --id)       JOB_ID="${2:-}"; shift 2 ;;
-    --latest)   LATEST=1; shift ;;
-    --budget)   BUDGET="${2:-}"; shift 2 ;;
-    --stall)    STALL="${2:-}"; shift 2 ;;
-    --interval) INTERVAL="${2:-}"; shift 2 ;;
-    --misses)   MISSES="${2:-}"; shift 2 ;;
-    -h|--help)  usage ;;
+    --id)        need_value "$@"; JOB_ID="$2"; shift 2 ;;
+    --latest)    LATEST=1; shift ;;
+    --budget)    need_value "$@"; BUDGET="$2"; shift 2 ;;
+    --stall)     need_value "$@"; STALL="$2"; shift 2 ;;
+    --interval)  need_value "$@"; INTERVAL="$2"; shift 2 ;;
+    --misses)    need_value "$@"; MISSES="$2"; shift 2 ;;
+    --state-dir) need_value "$@"; STATE_DIR="$2"; shift 2 ;;
+    -h|--help)   usage ;;
     *) printf 'wait-on-liveness: unknown argument: %s\n' "$1" >&2; exit 1 ;;
   esac
 done
@@ -74,15 +79,18 @@ command -v jq >/dev/null 2>&1 || { printf 'wait-on-liveness: jq is required\n' >
 COMPANION="${CODEX_COMPANION:-$(ls -1d "$HOME"/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | sort -V | tail -1)}"
 [ -n "$COMPANION" ] || { printf 'wait-on-liveness: no codex companion found\n' >&2; exit 1; }
 
-# One poll. Emits "<id>\t<updatedAt>" for the tracked job, or nothing if it is
-# not in running[]. A status call that fails or returns non-JSON also emits
-# nothing, so an empty result is ambiguous by construction: it means EITHER the
-# job finished OR the status call flaked. The caller resolves that by requiring
-# --misses consecutive empties, never by acting on one.
+# One poll, with a THREE-way result, because two of those states were previously
+# collapsed into "no output" and read as progress toward completion:
+#   "<id>\t<updatedAt>"  the tracked job is running
+#   ""                   a valid status reply that does not list the job: absent
+#   "UNAVAILABLE"        the status call failed or returned non-JSON
+# Only `absent` counts toward --misses. A status call we could not make tells us
+# nothing about the job, so it must never accumulate toward "finished", however
+# many times in a row it happens.
 poll() {
   local out
-  out="$(node "$COMPANION" status --all --json 2>/dev/null)" || return 0
-  printf '%s' "$out" | jq -e . >/dev/null 2>&1 || return 0
+  out="$(node "$COMPANION" status --all --json 2>/dev/null)" || { printf 'UNAVAILABLE'; return 0; }
+  printf '%s' "$out" | jq -e . >/dev/null 2>&1 || { printf 'UNAVAILABLE'; return 0; }
   if [ -n "$JOB_ID" ]; then
     printf '%s' "$out" | jq -r --arg id "$JOB_ID" \
       '(.running // [])[] | select(.id == $id) | "\(.id)\t\(.updatedAt // "")"'
@@ -99,10 +107,39 @@ tracked="$JOB_ID"
 seen_once=0
 misses=0
 
+# Liveness state must OUTLIVE one invocation. --budget (480s) is deliberately
+# below --stall (600s) so a call always returns inside the harness ceiling, which
+# means a stall can never be detected within a single call: each retry restarted
+# the clock and a wedged job stayed "running" forever. The last observed turn is
+# therefore persisted per job id and reloaded on the next call.
+state_file=''
+load_state() {
+  [ -n "$tracked" ] || return 0
+  state_file="$STATE_DIR/$(printf '%s' "$tracked" | tr -c 'A-Za-z0-9._-' '_').state"
+  [ -f "$state_file" ] || return 0
+  local f_upd f_when
+  IFS='	' read -r f_upd f_when < "$state_file" || return 0
+  case "$f_when" in ''|*[!0-9]*) return 0 ;; esac
+  last_seen="$f_upd"
+  last_change="$f_when"
+}
+save_state() {
+  [ -n "$tracked" ] || return 0
+  mkdir -p "$STATE_DIR" 2>/dev/null || return 0
+  state_file="$STATE_DIR/$(printf '%s' "$tracked" | tr -c 'A-Za-z0-9._-' '_').state"
+  printf '%s\t%s\n' "$last_seen" "$last_change" > "$state_file" 2>/dev/null || return 0
+}
+clear_state() { [ -n "${state_file:-}" ] && [ -f "$state_file" ] && mv -f "$state_file" "$state_file.done" 2>/dev/null; return 0; }
+
+load_state
+
 while :; do
   row="$(poll)"
 
-  if [ -n "$row" ]; then
+  if [ "$row" = "UNAVAILABLE" ]; then
+    # Tells us nothing. Do not touch misses, do not touch last_change.
+    :
+  elif [ -n "$row" ]; then
     id="${row%%	*}"
     upd="${row#*	}"
     if [ -z "$tracked" ]; then
@@ -111,6 +148,7 @@ while :; do
       # waited on while the output still named the first.
       tracked="$id"
       JOB_ID="$id"
+      load_state
     fi
     seen_once=1
     misses=0
@@ -121,6 +159,7 @@ while :; do
   elif [ "$seen_once" -eq 1 ]; then
     misses=$(( misses + 1 ))
     if [ "$misses" -ge "$MISSES" ]; then
+      clear_state
       printf 'finished\t%s\n' "${tracked:-?}"
       exit 0
     fi
@@ -134,11 +173,13 @@ while :; do
   fi
 
   if [ "$seen_once" -eq 1 ] && [ $(( now - last_change )) -ge "$STALL" ]; then
+    clear_state
     printf 'stalled\t%s\t%ds without a turn\n' "${tracked:-?}" "$(( now - last_change ))"
     exit 3
   fi
 
   if [ $(( now - started )) -ge "$BUDGET" ]; then
+    save_state
     printf 'running\t%s\tlast turn %ds ago, call again\n' "${tracked:-?}" "$(( now - last_change ))"
     exit 2
   fi

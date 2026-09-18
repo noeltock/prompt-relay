@@ -20,9 +20,20 @@ case "$FIXTURES" in
   /*) [ -d "$FIXTURES" ] || { printf 'wait-on-liveness.evals: fixture dir is not a directory\n' >&2; exit 1; } ;;
   *)  printf 'wait-on-liveness.evals: refusing a non-absolute fixture dir\n' >&2; exit 1 ;;
 esac
-cleanup() { [ -n "${FIXTURES:-}" ] && [ -d "$FIXTURES" ] || return 0; rm -rf "$FIXTURES"; }
+# Recoverable cleanup: move aside, never rm -rf. A fixture path is computed, and
+# a computed path that is wrong once is unrecoverable with rm.
+cleanup() {
+  [ -n "${FIXTURES:-}" ] && [ -d "$FIXTURES" ] || return 0
+  if command -v trash >/dev/null 2>&1; then
+    trash "$FIXTURES" 2>/dev/null
+  else
+    mkdir -p "$HOME/.Trash" 2>/dev/null
+    mv "$FIXTURES" "$HOME/.Trash/wait-on-liveness-evals-$(date +%s)" 2>/dev/null
+  fi
+}
 trap cleanup EXIT
 
+STATE="$FIXTURES/state"
 STUB="$FIXTURES/companion.mjs"
 SEQ="$FIXTURES/seq.jsonl"
 CURSOR="$FIXTURES/cursor"
@@ -57,6 +68,7 @@ run_wait() {  # budget stall seq_lines... -> prints "exit|stdout"
   printf '%s\n' "$@" > "$SEQ"
   local out ec
   out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" \
+         LIVENESS_STATE_DIR="$STATE" \
          bash "$WAIT" --latest --budget "$budget" --stall "$stall" --interval 1 2>/dev/null)"
   ec=$?
   printf '%s|%s' "$ec" "$(printf '%s' "$out" | head -1 | cut -f1)"
@@ -67,6 +79,24 @@ running() {  # id updatedAt -> a status payload with one running job
     '{running:[{id:$id,kind:"task",createdAt:"2026-09-18T01:00:00.000Z",updatedAt:$u}]}'
 }
 idle() { printf '%s' '{"running":[]}'; }
+
+# Run the SAME job across several calls without resetting the fixture cursor or
+# the state dir. This is the only way to exercise anything that must survive an
+# invocation, and --budget is deliberately below --stall, so a stall is only ever
+# reachable across calls.
+run_calls() {  # n budget stall id seq_lines... -> prints the last "exit|stdout"
+  local n="$1" budget="$2" stall="$3" id="$4"; shift 4
+  : > "$CURSOR"
+  printf '%s\n' "$@" > "$SEQ"
+  local out ec i=0
+  while [ "$i" -lt "$n" ]; do
+    out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" LIVENESS_STATE_DIR="$STATE" \
+           bash "$WAIT" --id "$id" --budget "$budget" --stall "$stall" --interval 1 2>/dev/null)"
+    ec=$?
+    i=$(( i + 1 ))
+  done
+  printf '%s|%s' "$ec" "$(printf '%s' "$out" | head -1 | cut -f1)"
+}
 
 pass=0; fail=0
 check() {
@@ -142,6 +172,31 @@ check "no --id and no --latest is a usage error" "$?|" "1|" "exit 1 is reserved 
 
 SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" bash "$WAIT" --latest --budget abc >/dev/null 2>&1
 check "non-numeric budget is a usage error" "$?|" "1|" "a typo must not become a zero-second budget"
+
+# 8. STATUS UNAVAILABLE IS NOT PROGRESS TOWARDS FINISHED. Two consecutive failed
+#    fetches used to satisfy --misses and report a live job as finished. A call
+#    we could not make says nothing about the job, however many times it fails.
+check "consecutive failed fetches are not a finish" \
+  "$(run_wait 6 30 "$(running j8 2026-09-18T01:00:01Z)" "INVALID" "INVALID" \
+                   "$(running j8 2026-09-18T01:00:02Z)" "$(running j8 2026-09-18T01:00:03Z)")" \
+  "2|running" "unavailable status must be distinct from an absent job"
+
+# 9. THE CROSS-CALL CASE. --budget sits below --stall by design, so a stall can
+#    never be reached inside one call: without persisted state every retry reset
+#    the clock and a wedged job reported "running" forever.
+check "a stall accumulates across calls" \
+  "$(run_calls 3 3 7 j9 "$(running j9 frozen)")" \
+  "3|stalled" "the regression that made the stall threshold unreachable"
+
+# 9b. And the same state must not turn a healthy job into a false stall.
+check "advancing turns across calls do not stall" \
+  "$(run_calls 2 2 30 j9b "$(running j9b 2026-09-18T01:00:01Z)" "$(running j9b 2026-09-18T01:00:02Z)" \
+                         "$(running j9b 2026-09-18T01:00:03Z)" "$(running j9b 2026-09-18T01:00:04Z)")" \
+  "2|running" "persistence must carry liveness, not just decay"
+
+# 10. A flag that takes a value must be given one, rather than spinning.
+timeout 10 bash "$WAIT" --id >/dev/null 2>&1
+check "--id with no value is a usage error" "$?|" "1|" "it used to loop forever on a missing value"
 
 printf '\nResults: %d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
