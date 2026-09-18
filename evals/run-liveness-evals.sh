@@ -40,12 +40,24 @@ fs.writeFileSync(cur, String(i + 1));
 process.stdout.write(out === 'INVALID' ? 'not json at all' : out);
 STUBEOF
 
-run_wait() {  # seq_lines... -> prints "exit|stdout"
+# BUDGET discipline. Each poll costs one --interval plus a node start, so
+# elapsed time runs ahead of poll count. Any case whose expected answer is
+# terminal (0, 3 or 4) must set a budget comfortably clear of its poll count,
+# or it races the budget and passes on timing rather than on behaviour. Only a
+# case that EXPECTS exit 2 should sit near the boundary.
+run_wait() {  # budget stall seq_lines... -> prints "exit|stdout"
+  # Budget and stall are POSITIONAL, not environment. An earlier version set
+  # them as `BUDGET=2 check ... "$(run_wait ...)"`, which does not work twice
+  # over: a var prefixed to `check` is not in scope for the command
+  # substitution, which expands first, and `BUDGET=2 x="$(...)"` is a plain
+  # assignment that leaks to every later case. The suite passed or failed on
+  # case order.
+  local budget="$1" stall="$2"; shift 2
   : > "$CURSOR"
   printf '%s\n' "$@" > "$SEQ"
   local out ec
   out="$(SEQ="$SEQ" CURSOR="$CURSOR" CODEX_COMPANION="$STUB" \
-         bash "$WAIT" --latest --budget "${BUDGET:-3}" --stall "${STALL:-2}" --interval 1 2>/dev/null)"
+         bash "$WAIT" --latest --budget "$budget" --stall "$stall" --interval 1 2>/dev/null)"
   ec=$?
   printf '%s|%s' "$ec" "$(printf '%s' "$out" | head -1 | cut -f1)"
 }
@@ -67,20 +79,20 @@ check() {
 #    Two idle polls, not one: --misses defaults to 2, so a single empty reply is
 #    deliberately not a verdict. A one-idle fixture here would pass or fail on
 #    timing rather than on behaviour.
-BUDGET=6 check "finishes when the job leaves running[]" \
-  "$(run_wait "$(running j1 2026-09-18T01:00:01Z)" "$(running j1 2026-09-18T01:00:02Z)" "$(idle)" "$(idle)")" \
+check "finishes when the job leaves running[]" \
+  "$(run_wait 20 20 "$(running j1 2026-09-18T01:00:01Z)" "$(running j1 2026-09-18T01:00:02Z)" "$(idle)" "$(idle)")" \
   "0|finished" "the ordinary success path"
 
 # 2. THE CASE THAT MOTIVATED THIS. updatedAt keeps advancing past the budget.
 #    Under the old design a fixed timeout killed exactly this job for being slow.
-BUDGET=2 check_job="$(run_wait \
+check_job="$(run_wait 2 20 \
   "$(running j2 2026-09-18T01:00:01Z)" "$(running j2 2026-09-18T01:00:02Z)" \
   "$(running j2 2026-09-18T01:00:03Z)" "$(running j2 2026-09-18T01:00:04Z)")"
 check "a live job past budget says call again, not dead" "$check_job" \
   "2|running" "a slow job and a wedged job must not share an exit code"
 
 # 3. updatedAt frozen for the whole stall window is a wedge.
-STALL=2 BUDGET=9 check_stall="$(run_wait \
+check_stall="$(run_wait 30 2 \
   "$(running j3 2026-09-18T01:00:01Z)" "$(running j3 2026-09-18T01:00:01Z)" \
   "$(running j3 2026-09-18T01:00:01Z)" "$(running j3 2026-09-18T01:00:01Z)" \
   "$(running j3 2026-09-18T01:00:01Z)" "$(running j3 2026-09-18T01:00:01Z)")"
@@ -89,7 +101,7 @@ check "frozen updatedAt is reported as stalled" "$check_stall" \
 
 # 4. Nothing running at all, from the first poll, is not a stall.
 check "no matching job exits 4, not 3" \
-  "$(run_wait "$(idle)" "$(idle)" "$(idle)")" \
+  "$(run_wait 20 20 "$(idle)" "$(idle)" "$(idle)")" \
   "4|" "a wrong id must not look like a hang"
 
 # 5. LOAD-BEARING NEGATIVE. A transient status failure mid-run must not be read
@@ -97,7 +109,7 @@ check "no matching job exits 4, not 3" \
 #    ends idle either way, so a script that quits at the bad reply and one that
 #    rides through it both report "finished". The run must therefore end while
 #    the job is still alive, so a premature exit shows up as a different code.
-BUDGET=4 STALL=9 check_flake="$(run_wait \
+check_flake="$(run_wait 4 20 \
   "$(running j5 2026-09-18T01:00:01Z)" "INVALID" "$(running j5 2026-09-18T01:00:02Z)" \
   "$(running j5 2026-09-18T01:00:03Z)" "$(running j5 2026-09-18T01:00:04Z)")"
 check "a single bad status reply is not a verdict" "$check_flake" \
@@ -105,14 +117,14 @@ check "a single bad status reply is not a verdict" "$check_flake" \
 
 # 5b. Two consecutive empties ARE a finish: the tolerance must not become a hang.
 check "consecutive empties do mean finished" \
-  "$(run_wait "$(running j5b 2026-09-18T01:00:01Z)" "$(idle)" "$(idle)" "$(idle)")" \
+  "$(run_wait 20 20 "$(running j5b 2026-09-18T01:00:01Z)" "$(idle)" "$(idle)" "$(idle)")" \
   "0|finished" "--misses adds tolerance, it must not remove the success path"
 
 # 5c. A second job appearing must not become the thing being waited on. Under
 #     --latest the first sighting latches an id; when THAT id leaves running[],
 #     the answer is finished, regardless of what else started meanwhile.
 check "--latest follows the job it latched, not the newest" \
-  "$(run_wait "$(running first 2026-09-18T01:00:01Z)" "$(running second 2026-09-18T01:00:02Z)" \
+  "$(run_wait 20 20 "$(running first 2026-09-18T01:00:01Z)" "$(running second 2026-09-18T01:00:02Z)" \
               "$(running second 2026-09-18T01:00:03Z)" "$(running second 2026-09-18T01:00:04Z)")" \
   "0|finished" "waiting on the wrong job while printing the right name is the worst outcome"
 
