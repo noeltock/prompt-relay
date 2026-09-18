@@ -60,6 +60,34 @@ bash evals/run-codex-verifier-evals.sh
 
 It uses synthetic session JSONL in a temporary Codex home and never calls a model.
 
+## Claude verifier eval
+
+Tests roster rule matching for `verify/check-routing.sh`: harness scoping, backwards compatibility
+with unscoped rows, effort comparison, and case-insensitive scopes.
+
+```bash
+bash evals/run-claude-verifier-evals.sh
+```
+
+It builds synthetic subagent transcripts and `.meta.json` sidecars in a temp dir and never calls a
+model. The load-bearing case is the first one: a roster holding both `codex:advisor` and
+`claude:advisor` must not fail the Claude stage. Before harness scoping there was no Claude-side
+harness at all, and that false positive ran unnoticed against live transcripts.
+
+## Liveness eval
+
+Tests `verify/wait-on-liveness.sh`: the four exit codes, and that a slow job and a wedged job are
+distinguishable.
+
+```bash
+bash evals/run-liveness-evals.sh
+```
+
+It drives a stub companion reading a scripted sequence of status payloads, so no model runs and the
+suite finishes in seconds. The load-bearing cases are that a job past its budget whose `updatedAt`
+is still advancing exits 2 while a frozen one exits 3, and that a single malformed status reply is
+read as neither finished nor stalled.
+
 ## Hook eval
 Tests whether the enforcement layer (`hooks/claude/`) actually decides, deterministically — no
 model or judgment call involved. Run it directly:

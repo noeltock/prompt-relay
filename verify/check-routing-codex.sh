@@ -224,11 +224,18 @@ roster_source='/dev/null'
 [ -n "$roster" ] && roster_source="$roster"
 
 rows="$(printf '%s\n' "$raw_rows" | jq -c --rawfile roster "$roster_source" '
+  # The agent column may carry an optional harness scope: claude:advisor or
+  # codex:advisor. A bare name is unscoped and applies to both, so every roster
+  # written before this change keeps working untouched. The scope exists because
+  # "advisor" names a role on BOTH sides: its Codex stage runs gpt-6-astra and
+  # its Claude stage runs Fable, so one flat rule made whichever side it did not
+  # describe report MISMATCH on every run, and exit 1 with it.
   def roster_rules:
     [ $roster | split("\n")[]
       | gsub("^[[:space:]]+|[[:space:]]+$"; "")
       | select(length > 0 and (startswith("#") | not))
-      | capture("^(?<agent>[^[:space:]]+)[[:space:]]+(?<model>[^[:space:]]+)(?:[[:space:]]+(?<effort>[^[:space:]]+))?$") ];
+      | capture("^(?<scope>(?:[A-Za-z0-9_-]+):)?(?<agent>[^[:space:]]+)[[:space:]]+(?<model>[^[:space:]]+)(?:[[:space:]]+(?<effort>[^[:space:]]+))?$")
+      | select((.scope // "") == "" or (.scope | ascii_downcase) == "codex:") ];
   . as $row
   | (roster_rules | map(select(.agent == $row.role)) | .[0] // null) as $rule
   | (if $rule == null then ""
@@ -288,6 +295,26 @@ printf '%s\n' "$rows" | jq -sr '
   | sort_by(.count) | reverse
   | .[]
   | "  \(.role) / \(.model) / \(.effort): \(.count) observation\(if .count == 1 then "" else "s" end)"
+'
+
+# Coverage. Same reasoning as the Claude checker: a satisfied rule, a rule scoped
+# to the other harness and no rule at all all report an empty status, so a roster
+# that matches nothing is indistinguishable from one where everything passed.
+# Harness scoping makes that easier to hit, because a claude-only roster now
+# filters down to nothing here.
+printf '\nCoverage\n'
+printf '%s\n' "$rows" | jq -sr '
+  (map(select((.expected_model // "") != "")) | length) as $checked
+  | length as $total
+  | if $checked == 0 then
+      "  0 of \($total) observations were checked against a roster rule - the roster matches no role seen here."
+    else
+      "  \($checked) of \($total) observations were checked against a roster rule."
+      + (if $checked < $total then
+           "\n  Unchecked roles: "
+           + ((map(select((.expected_model // "") == "")) | map(.role) | unique | join(", ")))
+         else "" end)
+    end
 '
 
 if [ "$issue_count" -gt 0 ]; then
