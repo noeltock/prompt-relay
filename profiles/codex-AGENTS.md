@@ -89,27 +89,30 @@ while a live v2 parent canary successfully ran Luna and its `turn_context` recor
 The installed custom-agent names are `coder_low`, `coder_high`, `advisor`, `qa`, and `runner`.
 Their TOML files own model and effort pins. Never rely on the parent model being inherited.
 
-### Standing routing policy
+### Select the next action
 
-The lead owns requirements, scope, architecture, product decisions, security-sensitive judgment,
-review, and the final answer. Delegate when a bounded package adds useful independent work without
-inventing a product or stack decision. Honour the task's scope and any local proof-mode limits;
-this policy does not require fan-out or broaden authority. A symptom-only request with no bounded
-surface stays with the lead until the investigation or implementation can be scoped.
+The lead owns requirements, scope, architecture, product and security decisions, review and the
+final answer. Resolve missing decisions before choosing an executor: a security-related request
+does not itself authorise a coder to design the security policy. The lead settles choices from
+available context and asks the user only for decisions it cannot responsibly make.
 
-- Route ordinary coding and building with a clear goal, visible local patterns, and named
-  acceptance checks to `coder_low`.
-- Route large or messy diffs, debugging with a clear surface, and work requiring judgment among
-  existing patterns to `coder_high`. This includes implementation that first needs a broad code search.
-- Route an already-decided, named verification matrix to `qa`.
-- Route read-heavy searches, mechanical transforms, fetches, and repetitive non-coding work to
-  `runner`. Source-code edits, including mechanical renames, belong to a coder.
-- Use `advisor` only when the user explicitly asks for that consult or approves it as part of the
-  workflow. It is read-only and advisory.
-- Keep obvious edits and one- or two-command checks inline. Do not spawn merely to avoid typing.
+Use the table for the next action, not the eventual implementer. A file or error location bounds
+the search; it does not establish the cause or fix. Apply task scope and local proof-mode limits;
+delegate only when the package adds useful independent work.
 
-Review delegated work and return related corrections to the same compatible worker. Delegation
-is not required on every turn or phase.
+| What is needed next | Route |
+|---|---|
+| Product, architecture, stack or security decisions; a symptom with no bounded surface | lead scopes or decides, then delegates when ready |
+| Explicitly requested read-only second opinion | `advisor`; lead retains the decision |
+| Obvious edits or one- or two-command checks already in context | inline |
+| Bounded code diagnosis with unknown cause/fix; broad implementation search or a large/messy diff, even with a settled plan | `coder_high` |
+| Otherwise, bounded code changes with a settled approach, named scope and checks, including mechanical code edits | `coder_low` |
+| Execution of a named verification matrix, without fixes | `qa` |
+| Bounded gathering, fetching or mechanical **non-code** transforms | `runner`; never application-code edits |
+
+A blocker is not an automatic model promotion. Resolve the missing decision or environment issue,
+then continue the same compatible worker when its role still fits. Review returned work and send
+related corrections back to it. Delegation is not required on every turn or phase.
 
 ### Relay receipts
 
@@ -139,21 +142,6 @@ When it returns, emit one line before any necessary detail:
 Say `requested` until a transcript or equivalent runtime receipt establishes the actual model and
 effort. Completion alone never upgrades a route to `verified`. If verification was not performed,
 retain `requested`. Narrow terminals may visually wrap; do not insert a line break into the signal.
-
-### Route by what is missing
-
-| Task state | Route |
-|---|---|
-| Goal, approach, files, and checks are clear | `coder_low` |
-| Goal is clear; implementation needs local judgment | `coder_high` |
-| Product, architecture, stack, or security decision is missing | lead decides or asks the user |
-| A named matrix only needs to be run | `qa` |
-| Bounded gathering or mechanical non-code work | `runner` |
-| User requests a high-end second opinion | `advisor` |
-| Obvious edits or short checks already in context | inline |
-
-A blocker is not an automatic model promotion. Resolve the missing decision or environment issue,
-then continue the same worker when its role still fits. Change roles only when the work requires it.
 
 ### Work-package contract
 

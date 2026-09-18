@@ -32,6 +32,12 @@ against the acceptance column afterwards. These check decisions, not actual cont
 | That worker's last receipt says Terra/medium; its TOML now says Luna/high. | Do not call it verified Luna; inspect the next turn or create and verify a fresh worker. |
 | A QA brief names three CLI checks and requires no visual evidence. | Execute those checks; do not add browser/UI auditing. |
 | A runner uses `fork_turns="none"`; a standalone CLI task had a smaller prompt. | No empty-context or savings claim; no global memory/settings change without relevant measurement. |
+| Rename the exported `buildInvoice` helper to `createInvoice` in seven named source files; references and checks are listed. | `coder_low`: bounded code edits, even when mechanical. |
+| Rename a column in six supplied CSV exports and write the results to named output files. | `runner`: bounded non-code transformation. |
+| Apply the diagnosed null-handling fix across three named modules, following the supplied patch and regression checks. | `coder_low`: the fix is settled, despite involving a bug. |
+| Repair the failing `payment.test.ts` case; its stack trace identifies the module, but the cause is unknown. | `coder_high`: bounded diagnosis, not a settled fix. |
+| Implement the approved request-throttling design: limits, identity key, storage, failure behaviour, files and checks are specified. | `coder_low`: implement settled security decisions. |
+| Stop automated sign-ups from overwhelming the service; no traffic policy or approach has been chosen. | Lead scopes and decides before delegating implementation. |
 
 ## Install eval
 Tests the install path the way a stranger's agent will hit it — see
