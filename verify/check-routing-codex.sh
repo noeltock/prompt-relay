@@ -137,9 +137,13 @@ transcript_rows() {
     [ "$first_kind" = 'subagent' ] || continue
     if ! row="$(jq -cs --arg transcript "$transcript" --argjson cutoff "$cutoff" '
       ([.[] | select(.type == "session_meta")][0] // null) as $meta
-      | ([.[] | select(.type == "turn_context")][-1] // null) as $ctx
+      | ([.[] | select(.type == "turn_context")]) as $contexts
       | select($meta != null and ($meta.payload.source.subagent? != null))
-      | select((try (($meta.payload.timestamp[0:19] + "Z") | fromdateiso8601) catch 0) >= $cutoff)
+      # Inspect every context: a reused worker can predate the cutoff, and a
+      # later matching route must not conceal an earlier mismatch in the window.
+      | (if ($contexts | length) > 0 then $contexts[] else null end) as $ctx
+      | ($ctx.timestamp // $meta.payload.timestamp) as $ts
+      | select((try (($ts[0:19] + "Z") | fromdateiso8601) catch 0) >= $cutoff)
       | ([$meta.payload.source.subagent.thread_spawn.agent_role,
           $meta.payload.agent_path,
           $meta.payload.source.subagent.thread_spawn.agent_path]
@@ -147,7 +151,9 @@ transcript_rows() {
          | .[0] // "?") as $raw_role
       | (($raw_role | split("/")[-1]) | split("__")[0]) as $role
       | {
-          ts: $meta.payload.timestamp,
+          ts: $ts,
+          session_created_at: $meta.payload.timestamp,
+          turn_id: ($ctx.payload.turn_id // ""),
           harness: "codex-transcript",
           role: $role,
           model: ($ctx.payload.model // "unknown"),
@@ -156,7 +162,8 @@ transcript_rows() {
                    // $ctx.payload.effort
                    // ""),
           agent_id: ($meta.payload.id // "?"),
-          parent_thread_id: ($meta.payload.parent_thread_id // ""),
+          parent_thread_id: ($meta.payload.source.subagent.thread_spawn.parent_thread_id
+                             // $meta.payload.parent_thread_id // ""),
           transcript_path: $transcript,
           evidence: $transcript,
           observation: "observed"
@@ -209,7 +216,7 @@ legacy_rows() {
 raw_rows="$(transcript_rows; legacy_rows)"
 
 if [ -z "$raw_rows" ]; then
-  [ "$json_output" -eq 1 ] || printf '%s\n' 'No matching Codex delegations found.'
+  [ "$json_output" -eq 1 ] || printf '%s\n' 'No matching Codex observations found.'
   exit 0
 fi
 
@@ -280,7 +287,7 @@ printf '%s\n' "$rows" | jq -sr '
   | map({role:.[0].role, model:.[0].model, effort:.[0].effort, count:length})
   | sort_by(.count) | reverse
   | .[]
-  | "  \(.role) / \(.model) / \(.effort): \(.count) delegation\(if .count == 1 then "" else "s" end)"
+  | "  \(.role) / \(.model) / \(.effort): \(.count) observation\(if .count == 1 then "" else "s" end)"
 '
 
 if [ "$issue_count" -gt 0 ]; then

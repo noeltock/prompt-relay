@@ -17,8 +17,9 @@ Codex now reads its session transcripts directly too:
 bash verify/check-routing-codex.sh --since 7
 ```
 
-Use `--json` for one JSON object per delegation. Both commands accept `--roster FILE`; without it
-they check `./.prompt-relay-roster`, then `$HOME/.prompt-relay-roster`.
+Use `--json` for JSONL: Claude emits one object per delegation; Codex emits one per recorded
+`turn_context` (plus any legacy log rows). Both accept `--roster FILE`; without it they check
+`./.prompt-relay-roster`, then `$HOME/.prompt-relay-roster`.
 
 `--since N` is whole days, so it cannot exclude yesterday evening's runs from a run this morning.
 `--after TIMESTAMP` sets an absolute floor (epoch seconds, `YYYY-MM-DD`, or `YYYY-MM-DDTHH:MM:SS`)
@@ -26,8 +27,9 @@ and takes whichever of the two is later. Pass your install time on the first run
 today is otherwise applied to delegations that predate it, which fails for work that was never
 misrouted.
 
-The `DATE` column shows the transcript's own UTC timestamp, while the filters compare file mtime.
-The instant is the same either way, but read a `--after` value off your clock, not off the column.
+The `DATE` column is UTC. Claude filters by file mtime. Codex uses mtime only to find candidate
+files, then applies the cutoff to each `turn_context` timestamp. A worker created before a roster
+change is still checked if it ran after it. Prefer epoch seconds for an unambiguous install cutoff.
 
 ## Roster
 
@@ -35,7 +37,7 @@ Write one rule per line: `agent-role expected-model-substring [expected-effort]`
 
 ```text
 # Codex custom role  model             effort
-coder_low            gpt-5.6-terra     medium
+coder_low            gpt-5.6-luna      high
 coder_high           gpt-5.6-terra     high
 advisor              gpt-6-astra       medium
 qa                   gpt-5.6-luna      medium
@@ -44,7 +46,9 @@ runner               gpt-5.6-luna      medium
 
 `MISMATCH` means observed model/effort did not satisfy the rule. `UNVERIFIED` means the row records
 only a request or lacks an observed field required by the roster. Either status exits 1. A row
-without a roster rule is shown but does not fail. Common failures are an untyped spawn inheriting
+without a roster rule is shown but does not fail. Add `default`, `worker` and `explorer` rules
+if you use those generic Codex routes. Empty output is no evidence, not a passing canary.
+Common failures are an untyped spawn inheriting
 the parent, a skill- or slash-command-launched agent inheriting the lead because no `Task` tool call
 fired for a hook to catch, an unavailable pin falling back, or a forwarder logging intent instead of
 evidence.
@@ -53,7 +57,14 @@ evidence.
 
 `check-routing-codex.sh` scans `sessions/` and `archived_sessions/` under `$CODEX_HOME` (default
 `~/.codex`). It selects real subagent sessions from `session_meta`, then reads the actual model and
-effort from the final `turn_context` in the same transcript.
+effort from every `turn_context` in the time window. Later matches cannot hide earlier mismatches.
+Fields missing from one context are not borrowed from another. A transcript without any context
+produces an unverified row when its creation time is in the window.
+
+JSON rows use `ts` for the context timestamp, `session_created_at` for the worker's creation time,
+and `turn_id` when recorded. Legacy contexts without a timestamp fall back to creation time, so
+those transcripts cannot prove when a worker was reused. Counts are observations, not unique
+workers, requests or costs; a turn can record more than one context.
 
 Codex records the custom role in `agent_role` on surfaces that expose it. When that field is empty,
 the verifier falls back to the last component of `agent_path`. Name those tasks with the role first,
