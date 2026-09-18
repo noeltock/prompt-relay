@@ -15,7 +15,7 @@ and which have a live transcript receipt; one successful canary does not verify 
 | File | Shipped pin | Authority |
 |---|---|---|
 | `coder-low.toml` | Luna high | edits and verifies a bounded implementation |
-| `coder-high.toml` | Terra high | edits when local implementation judgment is required |
+| `coder-high.toml` | Astra high | edits when local implementation judgment is required |
 | `advisor.toml` | Astra medium | read-only advice, manual invocation |
 | `qa.toml` | Luna medium | runs named checks, never fixes |
 | `runner.toml` | Luna medium | bounded searches/transforms, never codes |

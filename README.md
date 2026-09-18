@@ -33,9 +33,9 @@ model name, so it survives any rename or swap.
 Prompt Relay keeps runtime routing visible without turning the terminal into a dashboard. Dispatch
 and completion signals are each one logical line:
 
-> **🔧 Coder Low** · Dispatched: implement the approved settings change · requested Terra / medium
+> **🔧 Coder Low** · Dispatched: implement the approved settings change · requested Luna / high
 
-> **🔧 Coder Low** · Done: settings change implemented and checks passed · verified Terra / medium
+> **🔧 Coder Low** · Done: settings change implemented and checks passed · verified Luna / high
 
 The installer finishes with one compact roster table showing what was configured, what was
 live-verified, and whether a fresh session is required. A configured route is never presented as

@@ -38,7 +38,7 @@ Write one rule per line: `agent-role expected-model-substring [expected-effort]`
 ```text
 # Codex custom role  model             effort
 coder_low            gpt-5.6-luna      high
-coder_high           gpt-5.6-terra     high
+coder_high           gpt-6-astra     high
 advisor              gpt-6-astra       medium
 qa                   gpt-5.6-luna      medium
 runner               gpt-5.6-luna      medium

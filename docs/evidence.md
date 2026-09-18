@@ -82,13 +82,15 @@ allowance savings remain self-reported.
 
 Signals: persistence ✓ · velocity ✓ · credibility ✓ · corroboration ✓.
 
+The current Codex profile uses Luna/high for bounded implementation and Astra/high for demanding implementation; the research below describes earlier options.
+
 ### Terra for normal implementation; Luna for bounded leaves — `real signal`
 
 OpenAI's model guidance fits the pattern, and a new community deployment skill independently maps
 Luna to exact mechanical work and Terra to normal development
 ([Reddit, 2026-09-05](https://www.reddit.com/r/codex/comments/1w874h5/i_made_a_codex_skill_that_picks_luna_terra_sol_or/)).
-The conservative Prompt Relay default goes one step stricter: Terra-medium owns code; Luna-medium
-owns runner and named QA work until local evals promote it.
+The original Prompt Relay default went one step stricter: Terra-medium owned code; Luna-medium
+owned runner and named QA work pending local evaluation.
 
 Signals: persistence ✓ · velocity ✓ · credibility ✓ · corroboration ✓.
 

@@ -313,8 +313,8 @@ the role names and icons defined in the installed profile, the middle dot as the
 only `Dispatched`, `Done`, `Blocked`, or `Failed` as states. Detailed evidence belongs in ordinary
 prose after the completion signal.
 
-Routing evidence is epistemic, not decorative. `requested Terra / medium` describes intent;
-`verified Terra / medium` requires a transcript or equivalent runtime receipt. A successful task,
+Routing evidence is epistemic, not decorative. `requested Luna / high` describes intent;
+`verified Luna / high` requires a transcript or equivalent runtime receipt. A successful task,
 a parsed TOML file, and a plausible answer do not prove the route. When no runtime check was made,
 keep `requested` even on the completion line.
 

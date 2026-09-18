@@ -1,6 +1,6 @@
 name = "coder_high"
 description = "Implementation worker for large or messy diffs and tasks requiring judgment among visible local patterns."
-model = "gpt-5.6-terra"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
