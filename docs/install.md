@@ -9,7 +9,8 @@ then follow every approved host path:
 
 - **Codex:** follow [`../profiles/codex-AGENTS.md`](../profiles/codex-AGENTS.md). Merge into an
   existing `~/.codex/config.toml` for global scope or `<project>/.codex/config.toml` for project
-  scope; never replace it. The profile owns its Codex receipt.
+  scope; never replace it. Keep routing behind the profile's conditional `AGENTS.md` pointer, or
+  merge into the policy already owned by the installed harness. The profile owns its Codex receipt.
 - **Claude Code:** continue with steps 3–10 below.
 - **Both:** complete the Codex setup but defer its standalone receipt, continue through steps 3–10,
   then produce one combined receipt with an activation instruction for each host.
@@ -44,7 +45,7 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
    |---|---|---|---|---|---|---|
    | **Claude only** | Opus (low) | Sonnet (low) | Sonnet (high) | Opus (high) | Sonnet (low) | Haiku |
    | **Claude + Codex** | Opus (low) | Codex cheap tier | Codex mid tier (xhigh) | strong OpenAI → best Claude | Sonnet | Haiku |
-   | **Codex only** ([see profile](../profiles/codex-AGENTS.md)) | chosen lead (medium) | Terra (medium) | Terra (high) | Astra (medium, manual) | Luna (medium) | Luna (medium) |
+   | **Codex only** ([see profile](../profiles/codex-AGENTS.md)) | chosen lead and effort | Luna (high) | Sol (medium) | Astra (medium, manual) | Luna (medium) | Luna (medium) |
    | **One sub / simplest** | your best model (low) | *(inline)* | *(inline)* | your best (high) | your cheapest | your cheapest |
    | **API keys only** | best model (low) | cheapest capable | mid, higher effort | best (high) | cheapest | cheapest |
 
@@ -146,14 +147,14 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
 ## Codex
 
 1. Merge the `[agents]` block from `profiles/codex-AGENTS.md` into `~/.codex/config.toml`.
-2. Append its `## Model routing & delegation` section to `~/.codex/AGENTS.md` without replacing
-   existing rules.
+2. Follow the profile's **Install shape**: put its policy in `~/.codex/routing.md` and a conditional
+   pointer in `~/.codex/AGENTS.md`, or update the existing harness-owned policy. Keep one copy.
 3. Copy `profiles/codex-agents/*.toml` into `~/.codex/agents/` and edit only the model/effort pins
    for your roster.
 4. Write the matching `.prompt-relay-roster`, run one harmless canary per pair, then run
    `bash verify/check-routing-codex.sh --since 1 --roster ~/.prompt-relay-roster`. The roster
-   applies to every delegation in the window, including runs from before the roster existed;
-   pass `--after` with your install time to scope it to new work.
+   applies to every recorded turn in the window. Pass `--after` with your install time to exclude
+   earlier work; later turns from workers created before installation are still checked.
 5. Treat the install as unverified until the transcript shows the intended model and effort.
 6. Start a new Codex task so the updated lead default, instructions, and custom-agent registry load
    together; finish the old task with the canonical installation receipt above.

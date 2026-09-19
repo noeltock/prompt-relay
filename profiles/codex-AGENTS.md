@@ -1,11 +1,6 @@
-<!-- prompt-relay · Codex routing profile · v3 (2026-09)
-     Verified against current OpenAI Codex subagent documentation and codex-cli 0.153.4
-     on macOS, 2026-09-06. Copy only the "Model routing & delegation" section into
-     ~/.codex/AGENTS.md (global) or <repo>/AGENTS.md (project). Merge the TOML into
-     ~/.codex/config.toml and copy profiles/codex-agents/*.toml into ~/.codex/agents/.
-
-     This file is deliberately NOT named AGENTS.md. A real AGENTS.md in this template
-     repository would make these installation instructions active while editing the template. -->
+<!-- prompt-relay · Codex routing profile · v4 (2026-09)
+     Install only the marked policy section, following "Install shape" below.
+     This template is not named AGENTS.md so editing it does not activate it. -->
 
 # Codex profile
 
@@ -31,34 +26,50 @@ combined outcome. Measure your own workload; do not attach a universal savings p
 
 ## Install shape
 
+Keep one routing policy. If a harness already owns it, merge the relevant rules into its versioned
+source and use its install process. Do not append a second policy to `AGENTS.md`.
+
+For a new global install, copy only **Model routing & delegation** (up to **Verify the roster**)
+into `~/.codex/routing.md`. Add this pointer to `~/.codex/AGENTS.md`, preserving existing rules:
+
+```markdown
+Before delegating or changing a route, read `~/.codex/routing.md`; reuse it within the task unless
+it changes. Simple work stays inline. Task scope, safety and proof-mode limits still apply.
+```
+
+For a project install, use `<project>/.codex/routing.md` and point to it from the project's
+`AGENTS.md`. Reconcile an existing routing block rather than leaving conflicting copies. Keep
+local integrations, such as GitHub writing skills, remote-host selection or Jev classification,
+in the owning harness; they are not Prompt Relay prerequisites.
+
 Merge this into the applicable config file—`~/.codex/config.toml` globally or
 `<project>/.codex/config.toml` for a trusted project. Never replace an existing file:
 
 ```toml
 [agents]
 enabled = true
-default_subagent_model = "gpt-5.6-terra"
-default_subagent_reasoning_effort = "medium"
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "high"
 max_concurrent_threads_per_session = 4
 ```
 
 The default is a safety net for an untyped spawn. The named agent files are the real routing
 layer. Copy [`codex-agents/`](codex-agents/) into `~/.codex/agents/`, then edit their model pins.
-The shipped example roster is intentionally conservative:
+The shipped example roster starts bounded implementation on Luna:
 
 | Prompt Relay role | Custom agent | Example pin | Purpose |
 |---|---|---|---|
-| `lead` | interactive session | your chosen lead, medium | scopes, decides, reviews, integrates |
-| `coder-low` | `coder_low` | Terra, medium | normal implementation after scope is clear |
-| `coder-high` | `coder_high` | Terra, high | messy diffs or judgment among visible patterns |
+| `lead` | interactive session | your chosen lead and effort | scopes, decides, reviews, integrates |
+| `coder-low` | `coder_low` | Luna, high | normal implementation after scope is clear |
+| `coder-high` | `coder_high` | Sol, medium | messy diffs or judgment among visible patterns |
 | `advisor` | `advisor` | Astra, medium | manual second opinion; read-only |
 | `qa` | `qa` | Luna, medium | executes a named check matrix; never fixes |
 | `runner` | `runner` | Luna, medium | searches, transforms, fetches, and other bounded leaf work |
 
 Model names are examples, not part of the public contract. `coder-low` means the lower coding
-tier in the installed roster; it does not mean the smallest model in the catalogue. The default
-roster keeps routine code on Terra and reserves Luna for narrow runner/QA work because current
-community reports are mixed on Luna implementation quality.
+tier in the installed roster; it does not mean the smallest model in the catalogue. Evaluate
+implementation quality on your own tasks before adopting these pins; a passing route canary
+proves model selection, not coding quality or savings.
 
 ## Capability canary
 
@@ -73,34 +84,35 @@ while a live v2 parent canary successfully ran Luna and its `turn_context` recor
 
 ## Model routing & delegation
 
-*Install this section in the applicable `AGENTS.md`.*
-
 ### Roster
 
 The installed custom-agent names are `coder_low`, `coder_high`, `advisor`, `qa`, and `runner`.
 Their TOML files own model and effort pins. Never rely on the parent model being inherited.
 
-### Standing routing policy
+### Select the next action
 
-The lead owns requirements, scope, architecture, product decisions, security-sensitive judgment,
-review, and the final answer. It delegates execution whenever a bounded work package can be
-written without inventing a product or stack decision.
+The lead owns requirements, scope, architecture, product and security decisions, review and the
+final answer. Resolve missing decisions before choosing an executor: a security-related request
+does not itself authorise a coder to design the security policy. The lead settles choices from
+available context and asks the user only for decisions it cannot responsibly make.
 
-- Route ordinary coding and building with a clear goal, visible local patterns, and named
-  acceptance checks to `coder_low`.
-- Route large or messy diffs, debugging with a clear surface, and work requiring judgment among
-  existing patterns to `coder_high`.
-- Route an already-decided, named verification matrix to `qa`.
-- Route read-heavy searches, mechanical transforms, fetches, and repetitive non-coding work to
-  `runner`.
-- Use `advisor` only when the user explicitly asks for that consult or approves it as part of the
-  workflow. It is read-only and advisory.
-- Keep a truly trivial change inline when it touches at most two obvious locations already in
-  context. Do not spawn merely to avoid typing.
+Use the table for the next action, not the eventual implementer. A file or error location bounds
+the search; it does not establish the cause or fix. Apply task scope and local proof-mode limits;
+delegate only when the package adds useful independent work.
 
-Apply this policy continuously across phases: scope once, delegate the eligible implementation,
-review the returned diff/evidence, and send corrections back to the same warm agent when practical.
-Continuous delegation does not mean recursive delegation or spawning on every turn.
+| What is needed next | Route |
+|---|---|
+| Product, architecture, stack or security decisions; a symptom with no bounded surface | lead scopes or decides, then delegates when ready |
+| Explicitly requested read-only second opinion | `advisor`; lead retains the decision |
+| Obvious edits or one- or two-command checks already in context | inline |
+| Bounded code diagnosis with unknown cause/fix; broad implementation search or a large/messy diff, even with a settled plan | `coder_high` |
+| Otherwise, bounded code changes with a settled approach, named scope and checks, including mechanical code edits | `coder_low` |
+| Execution of a named verification matrix, without fixes | `qa` |
+| Bounded gathering, fetching or mechanical **non-code** transforms | `runner`; never application-code edits |
+
+A blocker is not an automatic model promotion. Resolve the missing decision or environment issue,
+then continue the same compatible worker when its role still fits. Review returned work and send
+related corrections back to it. Delegation is not required on every turn or phase.
 
 ### Relay receipts
 
@@ -118,38 +130,22 @@ label carries the meaning; the icon is only a recognition aid. The allowed state
 Before a delegate starts, emit a line such as:
 
 ```text
-**🔧 Coder Low** · Dispatched: implement the approved settings change · requested Terra / medium
+**🔧 Coder Low** · Dispatched: implement the approved settings change · requested Luna / high
 ```
 
 When it returns, emit one line before any necessary detail:
 
 ```text
-**🔧 Coder Low** · Done: settings change implemented and checks passed · verified Terra / medium
+**🔧 Coder Low** · Done: settings change implemented and checks passed · verified Luna / high
 ```
 
 Say `requested` until a transcript or equivalent runtime receipt establishes the actual model and
 effort. Completion alone never upgrades a route to `verified`. If verification was not performed,
 retain `requested`. Narrow terminals may visually wrap; do not insert a line break into the signal.
 
-### Route by what is missing
-
-| Task state | Route |
-|---|---|
-| Goal, approach, files, and checks are clear | `coder_low` |
-| Goal is clear; implementation needs local judgment | `coder_high` |
-| Product, architecture, stack, or security decision is missing | lead decides or asks the user |
-| A named matrix only needs to be run | `qa` |
-| Bounded gathering or mechanical non-code work | `runner` |
-| User requests a high-end second opinion | `advisor` |
-| Two obvious edits already in context | inline |
-
-Escalate one rung at a time: `runner` / `qa` / `coder_low` → `coder_high` → lead. A blocker is a
-question to answer, not an automatic promotion. Answer it, then continue the same warm agent when
-the role remains appropriate.
-
 ### Work-package contract
 
-Every delegated brief must include:
+An existing issue or brief is sufficient if it supplies:
 
 1. the outcome and acceptance criteria;
 2. the exact owned files or an explicit read-only search boundary;
@@ -159,8 +155,16 @@ Every delegated brief must include:
 6. a compact return contract.
 
 Prefer `fork_turns="none"` for `runner`, `qa`, and cold `advisor` calls, then pass the bounded
-package explicitly. Give a coder only the recent turns it truly needs. Reusing a warm agent is
-better than spawning a new one and rebuilding the same context.
+package explicitly. Give a coder only the recent turns it needs. `fork_turns="none"` removes chat
+history, not all inherited instructions, skills, tools or memory. Measure the effective context
+before changing global settings; a small standalone CLI prompt is not proof of a small native child.
+A command-only QA brief calls for its named checks, not an unrelated browser or UI audit.
+
+Reuse an idle worker of the same role for the same project and continuing workstream after checking
+host, checkout and file ownership. Follow-ups name the new scope and relevant repository changes.
+Start a new worker when those no longer fit or independent work needs a separate one. A reused
+worker may retain an earlier model or effort after pins change: verify its next turn before calling
+it current. Reuse avoids rediscovery; it does not guarantee cache savings.
 
 Writing agents are sequential by default. Run them in parallel only when their file ownership is
 disjoint or they have separate worktrees. Read-only agents may fan out across independent angles.
@@ -199,12 +203,17 @@ The verifier reads Codex session transcripts directly and checks the actual mode
 simple:
 
 ```text
-coder_low   gpt-5.6-terra   medium
-coder_high  gpt-5.6-terra   high
+coder_low   gpt-5.6-luna    high
+coder_high  gpt-5.6-sol     medium
 advisor     gpt-6-astra     medium
 qa          gpt-5.6-luna    medium
 runner      gpt-5.6-luna    medium
 ```
+
+Add `default`, `worker` or `explorer` rules with the generic default pair if you use those roles;
+an unlisted role is shown but not checked. Inspect observations after a roster change with
+`--after <install-epoch-seconds>`: an older worker reused after that time still counts. No rows
+means no evidence, not a passing canary.
 
 Use the agent role recorded by Codex where available. If the runtime does not record a custom
 role, name the spawned task with the role as its first path segment (for example,
