@@ -126,6 +126,65 @@ Spotify's Portal write-up is still useful directional evidence for moving bulk r
 context: [Portal by Spotify](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90)
 (2026-09). Its headline covers their Java-monorepo bulk-read workflow, not delegation generally.
 
+## October 2026
+
+Checked 2026-10-04. The earlier sections above stay as the dated record of the September roster;
+this section records what changed after them.
+
+### Verified first-party
+
+- Claude Code has a built-in advisor tool ([docs](https://code.claude.com/docs/en/advisor.md)). It is
+  enabled with `/advisor`, the `advisorModel` setting, or `--advisor`, runs server-side, and reads the
+  full conversation. Claude calls it at decision points (before committing to an approach, on a
+  recurring error, before declaring done). The advisor must rank at or above the main model. It bills
+  to plan limits on subscriptions, except that a Fable advisor bills to usage credits on some plans.
+  The same page compares it with `opusplan`, subagents and `/model`.
+- [Model configuration](https://code.claude.com/docs/en/model-config.md) documents the `opusplan`
+  alias (Opus in plan mode, Sonnet for execution) and `CLAUDE_CODE_SUBAGENT_MODEL`. Precedence is
+  per-invocation model, then the env var, then the session model. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`
+  pins all subagents, so it overrides deliberately pinned roles. Subagent frontmatter supports
+  `effort` (low, medium, high, xhigh, max).
+- [Sonnet 5.5](https://www.anthropic.com/claude-sonnet-5-5) released 2026-09-28 at $2/$10 per M
+  tokens. Opus 5.5 released 2026-09-22. Haiku is still 4.5; a successor was announced for "coming
+  weeks", which is secondary-source only.
+- [GPT-6.1 Sol](https://openai.com/index/introducing-gpt-6-1-sol/) released 2026-09-22 at $2/$10
+  against GPT-6 Astra at $10/$50, and is available in Codex.
+- [ChatGPT Pro tiers](https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers): on
+  2026-10-30 the $200 Pro tier's Codex/Work usage drops from 20x to 10x Plus. A new Pro 500 tier adds
+  Astra Ultrafast, which consumes allowance at 8x.
+
+### Verified locally on Codex CLI 0.160.0
+
+`codex debug models` lists `gpt-6.1-sol` as multi-agent `v2`; GPT-6 Luna and GPT-6 Sol are also
+`v2`. This is catalogue inventory, not a spawnability verdict: the canary-plus-transcript rule from
+the 0.153.4 section still applies. The GPT-5.6 Terra/Luna pins above are stale for new installs.
+
+### Claude-first consolidation, with Sonnet as executor — `real signal`
+
+X practitioners, 2026-09-20 to 2026-10-04, describe a consolidation onto Claude after Opus 5.5,
+including people cancelling Codex Pro. The common setup is Opus 5.5 leading, Sonnet 5.5 executing,
+and Fable advising. Anecdotes put Sonnet 5.5 high roughly level with Opus 5.5 high. Cross-vendor
+survives mainly as a different-family reviewer, because heterogeneity catches different failure
+modes. This is radar from posts, not a controlled comparison, and individual posts are not linked
+here. It is why the shipped worked example is now Claude-only with Codex optional.
+
+### Sonnet burns more tokens than Opus on some tasks — `too-early`
+
+A contrarian minority reports that Sonnet sometimes spends more tokens per task than Opus, so
+delegation savings on a subscription are not guaranteed. Consistent with the earlier caveat that
+no savings figure ports between setups; unmeasured here.
+
+### Advisor and router percentages — `manufactured hype`
+
+A "79% token reduction" advisor claim has no primary source that I could find. Not Diamond's 20-65%
+and Martian's "up to 97%" are vendor router claims with no frozen task set or accepted-output
+grader. None transfers to a Prompt Relay roster.
+
+### Inference, not evidence
+
+A mid-session model switch probably cannot reuse the previous model's prompt cache. This is
+inference from how prompt caching works, not something measured or documented for this case.
+
 ## What is not established
 
 - No public controlled benchmark shows that this full routing policy beats a single strong Codex
