@@ -9,8 +9,12 @@ model: sonnet          # the model that runs THIS wrapper. Keep it cheap — it 
 effort: low            # EDIT: effort UP on cheap models, DOWN on smart ones
 tools: Bash, Read, Edit, Write, Grep, Glob
 ---
-<!-- Copy this over agents/coder-low.md (or coder-high.md) when your executor is NOT a
+<!-- OPTIONAL — mixed stack, mainly for quota overflow. Claude-only installs do not need this
+     file. Copy it over agents/coder-low.md (or coder-high.md) when your executor is NOT a
      Claude model. Rename the file to match, and edit the four CAPITALISED placeholders. -->
+
+**Optional.** Use this only when you want overflow onto another vendor's quota; the default
+Claude-only roster needs no wrapper.
 
 **Why this file exists.** A Claude Code sub-agent's `model:` field accepts Claude models only.
 Writing another vendor's model name there does not route to that vendor — it silently falls back.
