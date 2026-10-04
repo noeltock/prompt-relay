@@ -6,9 +6,13 @@
 
 **Keep your best model on the decisions that need it.**
 
-Prompt Relay is a set of routing templates for Claude Code and Codex. The lead owns scope, architecture and review. Workers get bounded jobs, and an advisor gives a second opinion when asked. Six roles, Markdown/TOML files, and no orchestration framework to look after.
+Routing templates for Claude Code and Codex. The lead owns scope, architecture and review, workers get bounded jobs, and an advisor weighs in on the hard calls. Six roles, Markdown and TOML, no orchestration framework to babysit.
 
-The part that's easy to miss: an agent can finish the job and still have used the wrong model. Prompt Relay checks the transcript against your roster, including workers that were already running when you changed the settings.
+## What changed (October 2026)
+
+Until recently the clever setup was spreading work across vendors: plan on Claude, execute on Codex, stretch two allowances instead of one. That trade has mostly gone. Opus 5.5 and Sonnet 5.5 cover almost everything on their own, and Claude Code now ships a built-in advisor. Meanwhile OpenAI's $200 Pro plan drops from 20x to 10x Plus usage for Codex on 30 October, so offloading there for quota is getting worse, not better.
+
+So the default here is now Claude-only. Codex keeps two jobs: reviewer from a different model family (it misses different things, which is the point of a second opinion), and its own harness if that's where you live, where OpenAI pitches GPT-6.1 Sol as close to Astra at a fifth of the price. Cross-vendor execution stays in the repo as an option for quota overflow. That's my read of the last few weeks, with dated sources in [the evidence notes](docs/evidence.md). We'll see how long it holds.
 
 ## Install
 
@@ -18,7 +22,7 @@ Paste this into your agent:
 Install prompt-relay: read https://github.com/noeltock/prompt-relay/blob/main/docs/install.md, propose a role→model mapping for my stack, and install only after I confirm. Back up anything you touch; never overwrite my rules.
 ```
 
-The installer asks about your setup, proposes a mapping, and waits for approval. It finishes with a compact roster showing what's configured, what's been verified by a live run, and whether you need a fresh session.
+It asks about your setup, proposes a mapping and waits for your OK. You end up with a compact roster: what's configured, what's been verified by a live run, and whether you need a fresh session.
 
 | Your setup | Start here |
 |---|---|
@@ -26,92 +30,74 @@ The installer asks about your setup, proposes a mapping, and waits for approval.
 | Codex only | [Codex profile](profiles/codex-AGENTS.md) and [custom-agent TOMLs](profiles/codex-agents/) |
 | Mixed (optional) | [Installation guide](docs/install.md): Claude reaches Codex through a wrapper agent, mainly for quota overflow |
 
-For Codex, keep one owned routing policy behind a conditional reference in `AGENTS.md`. The installer should fit your existing harness, not add a second set of competing rules.
-
 ## Start with the native knobs
 
-Before adding roles, use what Claude Code already ships. `opusplan` runs Opus in plan mode and Sonnet for execution. `CLAUDE_CODE_SUBAGENT_MODEL` sets a model for unpinned subagents (precedence: per-invocation model, then the env var, then the session model; the `_FORCE` variant pins every subagent and overrides your deliberately pinned roles). `/advisor` (or `advisorModel`, or `--advisor`) adds a server-side second opinion that reads the whole conversation and must rank at or above the main model. See the [model config](https://code.claude.com/docs/en/model-config.md) and [advisor](https://code.claude.com/docs/en/advisor.md) docs. The roles below are for what these don't cover.
+Before installing any roles, use what Claude Code already ships:
 
-## Choose the next action
+- `opusplan` runs Opus in plan mode and Sonnet for execution.
+- `CLAUDE_CODE_SUBAGENT_MODEL` sets a model for any subagent you didn't pin. Skip the `_FORCE` variant, it overrides the roles you pinned on purpose.
+- `/advisor` (or `advisorModel`) puts a stronger model on the whole session, consulted before a plan, on a recurring error and before "done". It has to rank at or above your main model.
 
-A known file doesn't mean a known fix. Settle the missing decision or diagnose the cause before handing over implementation. Small command checks can stay with the lead; delegation has overhead too.
+Details in the [model config](https://code.claude.com/docs/en/model-config.md) and [advisor](https://code.claude.com/docs/en/advisor.md) docs. The roles below cover what these don't.
 
-| Role | Work |
-|---|---|
-| `lead` | Requirements, scope, architecture, security decisions, review and integration |
-| `coder-low` | Bounded implementation with a settled approach and clear acceptance |
-| `coder-high` | Bounded diagnosis, large or messy diffs, judgment among existing patterns |
-| `advisor` | A requested second opinion; advice only |
-| `qa` | Named checks, with results and evidence; no fixes |
-| `runner` | Bounded searches, fetches and non-code transforms |
+## Roles
 
-The Claude-only example (October 2026) runs the lead on **Opus 5.5/low**, `coder-low` on **Sonnet 5.5/medium**, `coder-high` on **Sonnet 5.5/high**, `qa` on Sonnet 5.5 and `runner` on Haiku 4.5, with the built-in advisor on `fable`. The Codex example pins `coder-low` to **GPT-6 Luna/high**, `coder-high` to **GPT-6.1 Sol/medium**, `advisor` to **GPT-6 Astra/medium**, and `qa` and `runner` to **Luna/medium**; never use Astra Ultrafast in subagents (8x allowance burn). Generic Codex workers default to Luna/high. These are starting choices for an account that exposes those models, not a benchmark result.
+| Role | Does | Claude example | Codex example |
+|---|---|---|---|
+| `lead` | Scope, architecture, security calls, review | Opus 5.5 / low | GPT-6.1 Sol / medium |
+| `coder-low` | Bounded work with the approach already settled | Sonnet 5.5 / medium | GPT-6 Luna / high |
+| `coder-high` | Diagnosis, messy diffs, judgment among existing patterns | Sonnet 5.5 / high | GPT-6.1 Sol / medium |
+| `advisor` | Second opinion, advice only | Built-in `/advisor` on Fable | GPT-6 Astra / medium |
+| `qa` | Named checks with evidence, no fixes | Sonnet 5.5 | GPT-6 Luna / medium |
+| `runner` | Searches, fetches, non-code transforms | Haiku 4.5 | GPT-6 Luna / medium |
 
-Reuse a compatible idle worker for related work. Check its role, host, checkout and file ownership first, then verify its next observed model after changing a pin. An existing task doesn't acquire new settings just because you edited a TOML file.
+These are starting choices for October 2026, not benchmark results. Two rules hold whatever you pick. A known file isn't a known fix, so settle the decision or find the cause before handing implementation down. And never put Astra Ultrafast in a Codex subagent, it burns allowance at 8x.
 
 ## See what actually ran
 
-Dispatch and completion each get one line:
+The failure here is silent. An agent can finish the job perfectly well on the wrong model, and nothing tells you. So every dispatch and completion gets one line:
 
 > **🔧 Coder Low** · Dispatched: implement the approved settings change · requested Sonnet 5.5 / medium
 
 > **🔧 Coder Low** · Done: settings change implemented and checks passed · verified Sonnet 5.5 / medium
 
-Use **requested** until a transcript or equivalent runtime receipt proves the model and effort. A successful task alone doesn't do that.
+It says **requested** until a transcript proves the model and effort. Then check:
 
 ```bash
 bash verify/check-routing.sh --since 7
 bash verify/check-routing-codex.sh --since 7
 ```
 
-Both accept `--roster FILE`, `--after TIMESTAMP` and `--json`. Scope shared role names with `claude:` or `codex:` so one harness isn't checked against the other's model. Check coverage too: a run with no matching rules tells you very little.
+Both take `--roster FILE`, `--after TIMESTAMP` and `--json`. Prefix shared role names with `claude:` or `codex:`, and look at coverage: a run that matched no rules tells you very little. A worker that was already running keeps its old settings after you change a pin, so check its next observed model. For long Codex companion jobs, `verify/wait-on-liveness.sh --id <job-id>` waits on the job rather than a clock. All of it is in the [verification guide](verify/README.md).
 
-Claude counts delegations. Codex counts recorded context observations, including recent turns from older workers; a later match won't hide an earlier mismatch. Neither count measures savings. The [verification guide](verify/README.md) covers roster examples, install cutoffs and receipt limits.
+## Claude Code hooks (optional)
 
-## Wait without guessing
+Instructions get skipped under context pressure, hooks don't. The [PreToolUse hooks](hooks/claude/) block large unscoped reads and bare `cat`/`head`/`tail` on big files (redirecting to a scoped read, a scout or `bin/bulk-read`), and pin unpinned `Explore` and `general-purpose` spawns to your cheap model. Skill-launched agents need their own frontmatter pins.
 
-For jobs tracked by the Codex companion:
+[`bin/bulk-read`](bin/bulk-read) sends files plus a question to a cheap model and returns bullets, so the corpus never touches the lead's transcript. Spotify describes the same shape in its [Portal write-up](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90). Wiring lives in `settings.example.json`.
 
-```bash
-bash verify/wait-on-liveness.sh --id <job-id>
-```
-
-The helper follows one job and saves its last observed turn across calls. It separates an unavailable status fetch from a valid reply showing the job has finished. Budget expiry returns “call again” only when the latest fetch was valid; an unavailable fetch returns an error.
-
-Its stall check uses a per-turn timestamp. Set the threshold above the longest turn you expect: a quiet worker may still be working. [Exit codes and state-directory options](verify/README.md#waiting-on-a-job) are documented separately.
-
-## Claude Code hooks
-
-Instructions can be skipped under context pressure. The optional [PreToolUse hooks](hooks/claude/) add checks at the tool call:
-
-- Large unscoped reads are blocked and redirected to a scoped read, a scout, or `bin/bulk-read`.
-- Bare `cat`, `head` and `tail` calls on large files are blocked; piped and ranged reads pass.
-- Unpinned `Explore` and `general-purpose` tool calls get your configured cheap model. Skill- and slash-command-launched agents need their own frontmatter pins.
-
-[`bin/bulk-read`](bin/bulk-read) sends files and a question to a cheap model and returns bullets, keeping the corpus out of the lead's transcript. Spotify describes a similar read-gate-to-worker pattern in its [Portal write-up](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90). This implementation uses your existing CLI. Wiring lives in `settings.example.json`; thresholds are environment variables.
-
-## Reference and checks
+## What's in here
 
 | Path | Contents |
 |---|---|
-| `agents/` | Optional Claude sub-agents and a Codex forwarder example |
+| `agents/` | Optional Claude sub-agents, plus the Codex forwarder for mixed setups |
 | `profiles/codex-agents/` | Native Codex leaf contracts and model pins |
 | `references/routing.md` | Routing mechanics and the failures behind them |
 | `verify/` | Transcript checkers and the waiting helper |
 | `evals/` | 20 routing cases, 5 install scenarios, and deterministic script checks |
-| `docs/evidence.md` | Sources, practitioner reports and remaining questions |
+| `docs/evidence.md` | Sources, practitioner reports and what's still open |
 
 ```bash
-bash evals/run-claude-verifier-evals.sh
-bash evals/run-codex-verifier-evals.sh
-bash evals/run-liveness-evals.sh
-bash evals/run-hook-evals.sh
+bash evals/run-claude-verifier-evals.sh   # 10 cases
+bash evals/run-codex-verifier-evals.sh    # 18 cases
+bash evals/run-liveness-evals.sh          # 20 cases
+bash evals/run-hook-evals.sh              # 17 cases
 ```
 
-These cover 10 Claude roster cases, 18 Codex verifier cases, 20 liveness cases and 17 hook cases. The fixtures check script behaviour; use a live canary to prove a model/effort pair on your installation.
+The fixtures check script behaviour. Proving a model/effort pair on your machine still takes a live canary.
 
 ## About savings
 
-Delegation can shrink a Claude Code bill when it keeps a costly lead transcript small. On Codex, OpenAI says subagent workflows consume more tokens than comparable single-agent runs. Routing can still help with context, independent work and matching capability to the task, but the allowance impact depends on your sessions.
+Delegation can shrink a Claude Code bill when it keeps an expensive lead transcript small. On Codex, OpenAI says subagent workflows use more tokens than a comparable single agent. And on a subscription, handing work to Sonnet doesn't guarantee fewer tokens than Opus doing it (a few practitioners report the opposite).
 
-I wouldn't put a savings percentage on your setup without measuring it. Start with the routes that actually ran, then compare them with accepted outcomes. The [evidence notes](docs/evidence.md) separate measured results from practitioner reports.
+So there's no savings percentage here, and the ones going around on X mostly have no control behind them. Check which routes actually ran, compare them with the work you accepted, and decide from there.
