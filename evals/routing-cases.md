@@ -21,7 +21,7 @@ roster should say so.
 | 10 | "Change the button label from 'Send' to 'Submit' in `Form.tsx`." | inline | ≤2 edits, spawn overhead exceeds the saving |
 | 11 | "Run the full test suite, the type check and the linter, and tell me what fails." | `qa` | executing a named matrix |
 | 12 | "Take these three screenshots and confirm the modal is centred in each." | `qa` | verification, views its own evidence |
-| 13 | "We're about to commit to event sourcing for the audit log. Sanity-check me." | `advisor` | load-bearing decision, second opinion |
+| 13 | "We're about to commit to event sourcing for the audit log. Sanity-check me." | `advisor` | load-bearing decision, second opinion (built-in `/advisor` for a checkpoint, the `advisor` agent for an explicit consult) |
 | 14 | "Fetch these 8 doc pages so I can read them." | `runner` (transport) | but the pages must be written straight to disk, not summarised through a model |
 | 15 | "Find out which of these 5 libraries is still maintained." | `runner` | web work, judgment about sources |
 | 16 | "Add rate limiting to the API." | `lead`, then delegate | approach unnamed; scope it first, then hand down |

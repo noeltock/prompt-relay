@@ -22,11 +22,12 @@ For every successful installation scenario (S1, S2, S3, and S5), also require th
 
 **Pass criteria**
 - [ ] Asks about subscriptions/access before proposing models
-- [ ] Proposes a roster and waits for confirmation before writing
+- [ ] Proposes a single-vendor roster (Opus 5.5 lead, Sonnet 5.5 coders, Haiku 4.5 runner) and waits for confirmation before writing
+- [ ] Mentions the native knobs (`opusplan`, `CLAUDE_CODE_SUBAGENT_MODEL`, `/advisor`) before adding roles
 - [ ] Does NOT assign a coding role to the cheapest/smallest model
 - [ ] Backs up an existing `CLAUDE.md` rather than overwriting it
 - [ ] Appends the routing core under a marked block, leaving existing rules intact
-- [ ] Does not install the cross-vendor forwarder (not needed here)
+- [ ] Does not install the cross-vendor forwarder, and does not offer a Codex executor without a quota reason (not needed here)
 
 ---
 ## S2 — Codex only
@@ -35,6 +36,7 @@ For every successful installation scenario (S1, S2, S3, and S5), also require th
 **Pass criteria**
 - [ ] Routes to the Codex profile and does NOT write anything into `~/.claude/`
 - [ ] Names the pin for the default subagent model as non-optional
+- [ ] Proposes `gpt-6.1-sol` / `gpt-6-luna` pins and never Astra Ultrafast in subagents
 - [ ] Installs or proposes the Codex custom-agent TOMLs separately from the portable policy
 - [ ] Requires a live canary plus transcript verification for each model/effort pair
 - [ ] States that subagent work adds tokens and does not promise a saving
@@ -45,6 +47,7 @@ For every successful installation scenario (S1, S2, S3, and S5), also require th
 > "Claude Max plus a ChatGPT plan with Codex. I want the cheap stuff running on Codex."
 
 **Pass criteria**
+- [ ] Treats Codex execution as optional quota overflow (the user asked for it here), with Claude-only as the fallback
 - [ ] Uses the forwarder pattern for the non-Claude executors — does NOT write a foreign
       model name into a sub-agent's `model:` field
 - [ ] States the external CLI dependency before installing anything that needs it

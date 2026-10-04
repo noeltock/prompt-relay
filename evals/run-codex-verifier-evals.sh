@@ -136,7 +136,7 @@ REUSED_SESSION="$REUSED_HOME/sessions/rollout-reused.jsonl"
 mkdir -p "$REUSED_HOME/sessions" "$REUSED_HOME/archived_sessions"
 OLD_TS='2020-01-01T00:00:00Z'
 AFTER="$(($(date +%s) - 3600))"
-printf '%s\n' 'coder_low gpt-5.6-luna high' > "$ROSTER"
+printf '%s\n' 'coder_low gpt-6.1-sol high' > "$ROSTER"
 jq -cn --arg ts "$OLD_TS" '{type:"session_meta",payload:{id:"reused-agent",timestamp:$ts,source:{subagent:{thread_spawn:{agent_role:"coder_low",parent_thread_id:"nested-parent"}}}}}' > "$REUSED_SESSION"
 jq -cn --arg ts "$OLD_TS" '{type:"turn_context",timestamp:$ts,payload:{turn_id:"old",model:"gpt-5.6-terra",effort:"medium"}}' >> "$REUSED_SESSION"
 jq -cn --arg ts "$TS" '{type:"turn_context",timestamp:$ts,payload:{turn_id:"recent",model:"gpt-5.6-terra",effort:"medium"}}' >> "$REUSED_SESSION"
@@ -150,11 +150,19 @@ rc=$?
 if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | jq -se 'length == 1 and .[0].turn_id == "recent"' >/dev/null; then ok=1; else ok=0; fi
 check 'since: excludes old turns, keeps recent work in an old session' "$ok" "rc=$rc output=$out"
 
-jq -cn --arg ts "$TS" '{type:"turn_context",timestamp:$ts,payload:{turn_id:"corrected",model:"gpt-5.6-luna",collaboration_mode:{settings:{reasoning_effort:"high"}}}}' >> "$REUSED_SESSION"
+jq -cn --arg ts "$TS" '{type:"turn_context",timestamp:$ts,payload:{turn_id:"corrected",model:"gpt-6.1-sol",collaboration_mode:{settings:{reasoning_effort:"high"}}}}' >> "$REUSED_SESSION"
 out="$(bash "$CHECKER" --codex-home "$REUSED_HOME" --since 1 --roster "$ROSTER" --json)"
 rc=$?
 if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | jq -se 'length == 2 and .[0].status == "MISMATCH" and .[1].status == "" and .[1].turn_id == "corrected"' >/dev/null; then ok=1; else ok=0; fi
-check 'history: later matching route does not hide an earlier mismatch' "$ok" "rc=$rc output=$out"
+
+# Same case, dotted slug: gpt-6.1-sol matches itself above, and an expected gpt-6-sol must not match it.
+first_ok="$ok"; first_detail="rc=$rc output=$out"
+printf '%s\n' 'coder_low gpt-6-sol high' > "$FIXTURES/roster-undotted"
+out="$(bash "$CHECKER" --codex-home "$REUSED_HOME" --since 1 --roster "$FIXTURES/roster-undotted" --json)"
+rc=$?
+if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | jq -se 'length == 2 and .[1].turn_id == "corrected" and .[1].model == "gpt-6.1-sol" and .[1].status == "MISMATCH" and .[1].expected_model == "gpt-6-sol"' >/dev/null; then ok=1; else ok=0; fi
+[ "$first_ok" -eq 1 ] || ok=0
+check 'history: later matching route does not hide an earlier mismatch' "$ok" "first: $first_detail; undotted: rc=$rc output=$out"
 
 jq -cn --arg ts "$TS" '{type:"turn_context",timestamp:$ts,payload:{turn_id:"missing-fields"}}' >> "$REUSED_SESSION"
 out="$(bash "$CHECKER" --codex-home "$REUSED_HOME" --since 1 --roster "$ROSTER" --json)"
