@@ -29,7 +29,7 @@ against the acceptance column afterwards. These check decisions, not actual cont
 |---|---|
 | The label edit is obvious in the open file; local proof mode permits only useful independent delegation. | Edit inline; no mandatory worker. |
 | A compatible idle `coder_low` just finished the first part of the same issue. | Reuse after checking host, checkout and ownership; supply changed scope. |
-| That worker's last receipt says Terra/medium; its TOML now says Luna/high. | Do not call it verified Luna; inspect the next turn or create and verify a fresh worker. |
+| That worker's last receipt says Luna/high; its TOML now says Sol 6.1/medium. | Do not call it verified Sol 6.1; inspect the next turn or create and verify a fresh worker. |
 | A QA brief names three CLI checks and requires no visual evidence. | Execute those checks; do not add browser/UI auditing. |
 | A runner uses `fork_turns="none"`; a standalone CLI task had a smaller prompt. | No empty-context or savings claim; no global memory/settings change without relevant measurement. |
 | Rename the exported `buildInvoice` helper to `createInvoice` in seven named source files; references and checks are listed. | `coder_low`: bounded code edits, even when mechanical. |

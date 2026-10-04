@@ -7,7 +7,7 @@ description: >
   judgment among approaches (use coder-high), design, or security-sensitive code.
 model: sonnet          # EDIT: your fast cheap executor. Claude models only — for a non-Claude
                        # executor use agents/coder-forwarder.example.md instead.
-effort: low            # EDIT: effort UP on cheap models, DOWN on smart ones
+effort: medium         # EDIT: effort UP on cheap models, DOWN on smart ones
 tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 You are the cheap executor. The approach is already decided; your job is faithful implementation.

@@ -1,13 +1,13 @@
 ---
 name: advisor
 description: >
-  Higher-tier reasoning consult for the session lead — advisory only, never edits, never blocks.
-  Put a hard, well-framed question to it when committing to non-trivial architecture, genuinely
-  torn between 2+ approaches, wanting a second read before locking a risky/irreversible plan, or
-  gut-checking load-bearing reasoning. Reuse the SAME advisor thread for follow-ups rather than
-  re-spawning. NOT for execution, NOT for code-diff review (use a cross-model reviewer), NOT for
+  Explicit, load-bearing consult for the session lead — advisory only, never edits, never blocks.
+  Complements the built-in /advisor (which covers in-session checkpoints): use this agent for a
+  hard, well-framed question when committing to non-trivial architecture, genuinely torn between
+  2+ approaches, or wanting a second read before locking a risky/irreversible plan. Reuse the
+  SAME advisor thread for follow-ups rather than re-spawning. NOT for execution, NOT for code-diff review (use a cross-model reviewer), NOT for
   trivial/mechanical turns.
-model: opus            # EDIT: your strongest reasoner (this is stage 2; run a different-vendor strong model cold as stage 1 first — see references/routing.md)
+model: opus            # EDIT: your strongest reasoner (stage 2; optionally run a different-vendor model cold as stage 1 first — see references/routing.md)
 effort: high           # EDIT: effort UP on cheap models, DOWN on smart ones
 tools: Read, Bash, Grep, Glob
 ---

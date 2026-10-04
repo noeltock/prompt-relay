@@ -16,8 +16,9 @@ then follow every approved host path:
   then produce one combined receipt with an activation instruction for each host.
 
 For Codex, prove each model/effort pair with a live canary plus
-`verify/check-routing-codex.sh`. `codex debug models` is useful inventory, but current builds can
-successfully run a Luna leaf even while its catalogue row says `v1`; runtime evidence wins.
+`verify/check-routing-codex.sh`. `codex debug models` is useful inventory, but a catalogue row is
+not a spawnability verdict (0.153.4 ran a Luna leaf while listing it `v1`; 0.160.0 lists
+`gpt-6.1-sol`, `gpt-6-sol` and `gpt-6-luna` as `v2`); runtime evidence wins.
 
 1. **Pick hosts and scope.** Ask which host or hosts to configure: Codex, Claude Code, or both.
    For each selected host, ask for global or single-project scope. Claude uses `~/.claude/` or
@@ -28,8 +29,9 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
    to pick. Ask three things:
    - **What do you have?** Which subscriptions or providers — Claude (Max/Pro), ChatGPT
      (Plus/Pro/Business) plus Codex, an API key, or just one of these?
-   - **How do you want to run it?** Simplest (single model, no sub-agents), single-vendor
-     multi-agent, or cross-vendor (needs two providers on separate quotas).
+   - **How do you want to run it?** Simplest (single model, no sub-agents) or single-vendor
+     multi-agent. Propose single-vendor by default. Offer cross-vendor (two providers on separate
+     quotas) only if they ask for it or give a quota reason, such as overflowing a Claude limit.
    - **How hands-off?** Comfortable with autonomous execution plus guardrails, or conservative
      for now?
 
@@ -41,11 +43,15 @@ successfully run a Luna leaf even while its catalogue row says `v1`; runtime evi
    Then **propose a role→model mapping** from the table below, show it back, and let them adjust
    before you write anything.
 
+   Native knobs come first: `opusplan`, `CLAUDE_CODE_SUBAGENT_MODEL` as the fallback for unpinned
+   spawns (never the `_FORCE` variant, which overrides deliberately pinned roles), and the built-in
+   `/advisor` (`advisorModel`) for in-session checkpoints.
+
    | You have | lead | coder-low | coder-high | advisor | qa | runner |
    |---|---|---|---|---|---|---|
-   | **Claude only** | Opus (low) | Sonnet (low) | Sonnet (high) | Opus (high) | Sonnet (low) | Haiku |
-   | **Claude + Codex** | Opus (low) | Codex cheap tier | Codex mid tier (xhigh) | strong OpenAI → best Claude | Sonnet | Haiku |
-   | **Codex only** ([see profile](../profiles/codex-AGENTS.md)) | chosen lead and effort | Luna (high) | Sol (medium) | Astra (medium, manual) | Luna (medium) | Luna (medium) |
+   | **Claude only** (default) | Opus 5.5 (low) | Sonnet 5.5 (medium) | Sonnet 5.5 (high) | built-in `/advisor` on Fable; `advisor` agent for load-bearing consults | Sonnet 5.5 | Haiku 4.5 |
+   | **Claude + Codex** (optional, quota overflow) | Opus 5.5 (low) | Codex cheap tier | Codex mid tier | built-in `/advisor`; optional OpenAI cold read as stage 1 | Sonnet 5.5 | Haiku 4.5 |
+   | **Codex only** ([see profile](../profiles/codex-AGENTS.md)) | Sol 6.1 (medium) | Luna (high) | Sol 6.1 (medium) | Astra (medium, manual) | Luna (medium) | Luna (medium) |
    | **One sub / simplest** | your best model (low) | *(inline)* | *(inline)* | your best (high) | your cheapest | your cheapest |
    | **API keys only** | best model (low) | cheapest capable | mid, higher effort | best (high) | cheapest | cheapest |
 

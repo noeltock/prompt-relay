@@ -50,8 +50,18 @@ states that Codex subagent workflows consume more tokens than comparable single-
 **never port a savings figure between harnesses**.
 
 ## The two-stage advisor consult
-A second opinion is stronger when it's genuinely independent. Run it in two sequenced stages:
-1. **A different-vendor strong model answers first, cold** — the raw question, no context from your
+**Built-in first.** Claude Code's `/advisor` (or the `advisorModel` setting, or `--advisor`) is a
+server-side tool that reads the full conversation; Claude calls it at decision points (before
+committing to an approach, on a recurring error, before declaring done). The advisor must rank at
+or above the main model, and it bills to plan limits on subscriptions, except that a Fable advisor
+bills to usage credits on some plans. See the [advisor docs](https://code.claude.com/docs/en/advisor.md),
+which also compare it with `opusplan`, subagents and `/model`. Use the `advisor` agent below only
+for an explicit, load-bearing consult where you want a framed question and a separate thread; it is
+the complement to `/advisor`, not a replacement for it.
+
+A second opinion is stronger when it's genuinely independent. For those explicit consults, run it
+in two sequenced stages:
+1. **Optionally, a different-vendor strong model answers first, cold** — the raw question, no context from your
    lead, its own original take.
 2. **Your strongest reasoner then answers**, receiving the raw question *plus* stage-1's answer,
    and reaches its own best call. The one rule is anti-anchoring: don't get dragged by stage 1,
@@ -119,6 +129,16 @@ uninstrumented work. Pick the number for your own harness's context window; the 
 generic part, the threshold isn't.
 
 ## Cross-vendor execution (mixing Claude + another CLI)
+**Optional, not the default.** The single-vendor roster is the default install. Route Claude's
+coding to Codex only for quota overflow. Cross-vendor stays most useful as a different-family
+reviewer and as the advisor's cold first read, because a different family catches different
+failure modes. Practitioner reports (Sept to Oct 2026) describe a consolidation onto Claude with
+cross-vendor surviving mainly as that reviewer; that is radar, not authority (see `docs/evidence.md`).
+
+*Session-sticky (inference, not measured):* switching the session model mid-session probably
+cannot reuse the previous model's prompt cache, so prefer a model per delegate or a fixed session
+model over flipping the lead back and forth.
+
 Two directions, and they are not symmetric. Pick the one that matches which harness you actually start sessions in.
 
 **Claude lead → OpenAI executors.** The worked example, via the official `openai/codex-plugin-cc` plugin (`/plugin marketplace add openai/codex-plugin-cc` → `/plugin install`). Note the plugin is a *Claude Code* plugin for calling out to Codex — it does not work in reverse. The rules below are written for this direction.
@@ -319,8 +339,8 @@ the role names and icons defined in the installed profile, the middle dot as the
 only `Dispatched`, `Done`, `Blocked`, or `Failed` as states. Detailed evidence belongs in ordinary
 prose after the completion signal.
 
-Routing evidence is epistemic, not decorative. `requested Luna / high` describes intent;
-`verified Luna / high` requires a transcript or equivalent runtime receipt. A successful task,
+Routing evidence is epistemic, not decorative. `requested Sonnet 5.5 / medium` describes intent;
+`verified Sonnet 5.5 / medium` requires a transcript or equivalent runtime receipt. A successful task,
 a parsed TOML file, and a plausible answer do not prove the route. When no runtime check was made,
 keep `requested` even on the completion line.
 

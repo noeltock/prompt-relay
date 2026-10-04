@@ -48,7 +48,7 @@ Merge this into the applicable config file—`~/.codex/config.toml` globally or
 ```toml
 [agents]
 enabled = true
-default_subagent_model = "gpt-5.6-luna"
+default_subagent_model = "gpt-6-luna"
 default_subagent_reasoning_effort = "high"
 max_concurrent_threads_per_session = 4
 ```
@@ -59,12 +59,17 @@ The shipped example roster starts bounded implementation on Luna:
 
 | Prompt Relay role | Custom agent | Example pin | Purpose |
 |---|---|---|---|
-| `lead` | interactive session | your chosen lead and effort | scopes, decides, reviews, integrates |
+| `lead` | interactive session | Sol 6.1, medium; escalate to Astra per task | scopes, decides, reviews, integrates |
 | `coder-low` | `coder_low` | Luna, high | normal implementation after scope is clear |
-| `coder-high` | `coder_high` | Sol, medium | messy diffs or judgment among visible patterns |
+| `coder-high` | `coder_high` | Sol 6.1, medium | messy diffs or judgment among visible patterns |
 | `advisor` | `advisor` | Astra, medium | manual second opinion; read-only |
 | `qa` | `qa` | Luna, medium | executes a named check matrix; never fixes |
 | `runner` | `runner` | Luna, medium | searches, transforms, fetches, and other bounded leaf work |
+
+**Never use Astra Ultrafast in subagents:** it consumes allowance at 8x (ChatGPT Pro tiers, October
+2026), and a leaf has no way to justify that burn. ChatGPT Pro $200 Codex/Work usage also drops
+from 20x to 10x Plus on 2026-10-30, so re-check your allowance headroom before leaning on parallel
+leaves.
 
 Model names are examples, not part of the public contract. `coder-low` means the lower coding
 tier in the installed roster; it does not mean the smallest model in the catalogue. Evaluate
@@ -78,9 +83,11 @@ a roster, spawn one harmless leaf canary for every model/effort pair you intend 
 the resulting session transcript with `verify/check-routing-codex.sh`. A successful answer alone
 is insufficient if the requested model silently fell back.
 
-This matters on current builds: on 0.153.4, `codex debug models` reports Luna as multi-agent `v1`,
+On codex-cli 0.160.0, `codex debug models` lists `gpt-6.1-sol`, `gpt-6-sol` and `gpt-6-luna` as
+multi-agent `v2`. The earlier 0.153.4 observation still shows why a catalogue flag is not a
+verdict: on 0.153.4, `codex debug models` reports Luna as multi-agent `v1`,
 while a live v2 parent canary successfully ran Luna and its `turn_context` recorded
-`gpt-5.6-luna / medium`. Runtime evidence wins over catalogue inference.
+`gpt-5.6-luna / medium` (the pre-October Luna pin). Runtime evidence wins over catalogue inference.
 
 ## Model routing & delegation
 
@@ -203,11 +210,11 @@ The verifier reads Codex session transcripts directly and checks the actual mode
 simple:
 
 ```text
-coder_low   gpt-5.6-luna    high
-coder_high  gpt-5.6-sol     medium
+coder_low   gpt-6-luna      high
+coder_high  gpt-6.1-sol     medium
 advisor     gpt-6-astra     medium
-qa          gpt-5.6-luna    medium
-runner      gpt-5.6-luna    medium
+qa          gpt-6-luna      medium
+runner      gpt-6-luna      medium
 ```
 
 Add `default`, `worker` or `explorer` rules with the generic default pair if you use those roles;

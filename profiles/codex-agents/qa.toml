@@ -1,6 +1,6 @@
 name = "qa"
 description = "Leaf verification worker that executes a named check matrix and returns compact pass/fail evidence."
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
 developer_instructions = """
