@@ -8,6 +8,8 @@ models your account exposes and prove each pair with a live canary plus
 All five agents are leaves: `[agents] enabled = false` removes nested delegation from their tool
 surface. The lead remains the interactive session and is configured separately.
 
+Do not set any role to Astra Ultrafast: it consumes allowance at 8x.
+
 After copying or changing these files, start a new Codex task so the lead default, instructions,
 and custom-agent registry load together. The installer must show which roles are merely configured
 and which have a live transcript receipt; one successful canary does not verify the roster.
@@ -15,7 +17,7 @@ and which have a live transcript receipt; one successful canary does not verify 
 | File | Shipped pin | Authority |
 |---|---|---|
 | `coder-low.toml` | Luna high | edits and verifies a bounded implementation |
-| `coder-high.toml` | Sol medium | edits when local implementation judgment is required |
+| `coder-high.toml` | Sol 6.1 medium | edits when local implementation judgment is required |
 | `advisor.toml` | Astra medium | read-only advice, manual invocation |
 | `qa.toml` | Luna medium | runs named checks, never fixes |
 | `runner.toml` | Luna medium | bounded searches/transforms, never codes |
