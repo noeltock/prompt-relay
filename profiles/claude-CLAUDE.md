@@ -1,4 +1,4 @@
-<!-- prompt-relay · Claude Code routing core · v2 (2026-09)
+<!-- prompt-relay · Claude Code routing core · v3 (2026-10)
      Paste the section below into your own CLAUDE.md (~/.claude/CLAUDE.md for
      global, or a project .claude/CLAUDE.md). Edit the Roster block here and the
      one `model:` line in each agents/*.md file — nothing else names a model. -->
@@ -10,17 +10,20 @@ guardrail detail — live in `references/routing.md`; read it before a large mul
 This core loads every turn; keep it triggers + standing biases only.*
 
 **Roster → models (EDIT THIS BLOCK; everything below references the ROLE, not the model):**
-| Role | Model (swap for your stack) | Worked example (Claude + Codex) |
+| Role | Model (swap for your stack) | Worked example (Claude-only) |
 |---|---|---|
-| `lead` | your session model | Opus at low effort — scopes, decides, reviews |
-| `coder-low` | fast cheap executor | GPT-5.6 Luna via Codex (Sonnet fallback) |
-| `coder-high` | stronger executor for messy/judgment work | GPT-5.6 Sol via Codex, medium |
-| `advisor` | strongest reasoner, second opinion only | GPT-5.6 Sol → best Claude, two-stage |
-| `qa` | cheap model for QA | Sonnet |
-| `runner` | cheapest for web/transforms | Haiku |
-*(Claude-only? Map `coder-low`/`coder-high` to Sonnet at rising effort and drop the Codex column.
- Non-Claude executor? A sub-agent's `model:` field takes Claude models only — you need the thin
- wrapper in `agents/coder-forwarder.example.md`, not a foreign model name in that field.)*
+| `lead` | your session model | Opus 5.5 at low effort — scopes, decides, reviews |
+| `coder-low` | fast cheap executor | Sonnet 5.5, medium |
+| `coder-high` | stronger executor for messy/judgment work | Sonnet 5.5, high |
+| `advisor` | strongest reasoner, second opinion only | built-in `/advisor` (`advisorModel: fable`); `advisor` agent for load-bearing consults |
+| `qa` | cheap model for QA | Sonnet 5.5 |
+| `runner` | cheapest for web/transforms | Haiku 4.5 |
+*(Claude-only is the primary example. Mixed stack, optional and mainly for quota overflow: point
+ `coder-low`/`coder-high` at Codex (`gpt-6-luna` / `gpt-6.1-sol`). A sub-agent's `model:` field
+ takes Claude models only — a non-Claude executor needs the thin wrapper in
+ `agents/coder-forwarder.example.md`, not a foreign model name in that field. Native knobs first:
+ `opusplan`, and `CLAUDE_CODE_SUBAGENT_MODEL` as the fallback for unpinned spawns — never the
+ `_FORCE` variant, which overrides every pinned role.)*
 
 **Standing biases:** the `lead` scopes / decides / reviews; execution and verification delegate
 down, even for small tasks. Judge the output, not the price tag — redo mediocre cheap-tier work
@@ -99,10 +102,12 @@ limit); 🚫 default effort on a cheap executor for a hard step (under-powered).
 models, DOWN on smart ones. Reserve the top effort tier for one genuinely hard reasoning step.
 Never crank effort for writing — extra reasoning makes strong models write worse.
 
-**Second-opinion consult (`advisor`):** put a hard, well-framed question up when committing to
-non-trivial architecture, genuinely torn between 2+ approaches, wanting a second read before you
-lock a risky plan, or gut-checking load-bearing reasoning. Advisory only — surface the take,
-decide, don't auto-obey. Reuse ONE advisor thread per session (don't re-brief it each time).
+**Second-opinion consult:** for in-session checkpoints (before committing to an approach, on a
+recurring error, before declaring done) use the built-in `/advisor`, which reads the whole
+conversation. Use the `advisor` agent only for an explicit, load-bearing, well-framed question:
+non-trivial architecture, torn between 2+ approaches, a risky plan, or gut-checking critical
+reasoning. Advisory only — surface the take, decide, don't auto-obey. Reuse ONE advisor thread
+per session (don't re-brief it each time).
 
 **Guardrails (any autonomous agent, doubly for cross-vendor executors):** work in git; require a
 printed file/delete plan before any destructive action; strip "be persistent / thorough / clean
