@@ -22,11 +22,15 @@ The installer asks about your setup, proposes a mapping, and waits for approval.
 
 | Your setup | Start here |
 |---|---|
-| Claude Code | [Claude profile](profiles/claude-CLAUDE.md), with optional [hooks](hooks/claude/) |
-| Codex | [Codex profile](profiles/codex-AGENTS.md) and [custom-agent TOMLs](profiles/codex-agents/) |
-| Both | [Installation guide](docs/install.md): Claude reaches Codex through a wrapper agent |
+| Claude Code (default) | [Claude profile](profiles/claude-CLAUDE.md), with optional [hooks](hooks/claude/) |
+| Codex only | [Codex profile](profiles/codex-AGENTS.md) and [custom-agent TOMLs](profiles/codex-agents/) |
+| Mixed (optional) | [Installation guide](docs/install.md): Claude reaches Codex through a wrapper agent, mainly for quota overflow |
 
 For Codex, keep one owned routing policy behind a conditional reference in `AGENTS.md`. The installer should fit your existing harness, not add a second set of competing rules.
+
+## Start with the native knobs
+
+Before adding roles, use what Claude Code already ships. `opusplan` runs Opus in plan mode and Sonnet for execution. `CLAUDE_CODE_SUBAGENT_MODEL` sets a model for unpinned subagents (precedence: per-invocation model, then the env var, then the session model; the `_FORCE` variant pins every subagent and overrides your deliberately pinned roles). `/advisor` (or `advisorModel`, or `--advisor`) adds a server-side second opinion that reads the whole conversation and must rank at or above the main model. See the [model config](https://code.claude.com/docs/en/model-config.md) and [advisor](https://code.claude.com/docs/en/advisor.md) docs. The roles below are for what these don't cover.
 
 ## Choose the next action
 
@@ -41,7 +45,7 @@ A known file doesn't mean a known fix. Settle the missing decision or diagnose t
 | `qa` | Named checks, with results and evidence; no fixes |
 | `runner` | Bounded searches, fetches and non-code transforms |
 
-The Codex example pins `coder-low` to **Luna/high**, `coder-high` to **Sol/medium**, `advisor` to **Astra/medium**, and `qa` and `runner` to **Luna/medium**. Generic Codex workers default to Luna/high. These are starting choices for an account that exposes those models, not a benchmark result.
+The Claude-only example (October 2026) runs the lead on **Opus 5.5/low**, `coder-low` on **Sonnet 5.5/medium**, `coder-high` on **Sonnet 5.5/high**, `qa` on Sonnet 5.5 and `runner` on Haiku 4.5, with the built-in advisor on `fable`. The Codex example pins `coder-low` to **GPT-6 Luna/high**, `coder-high` to **GPT-6.1 Sol/medium**, `advisor` to **GPT-6 Astra/medium**, and `qa` and `runner` to **Luna/medium**; never use Astra Ultrafast in subagents (8x allowance burn). Generic Codex workers default to Luna/high. These are starting choices for an account that exposes those models, not a benchmark result.
 
 Reuse a compatible idle worker for related work. Check its role, host, checkout and file ownership first, then verify its next observed model after changing a pin. An existing task doesn't acquire new settings just because you edited a TOML file.
 
@@ -49,9 +53,9 @@ Reuse a compatible idle worker for related work. Check its role, host, checkout 
 
 Dispatch and completion each get one line:
 
-> **🔧 Coder Low** · Dispatched: implement the approved settings change · requested Luna / high
+> **🔧 Coder Low** · Dispatched: implement the approved settings change · requested Sonnet 5.5 / medium
 
-> **🔧 Coder Low** · Done: settings change implemented and checks passed · verified Luna / high
+> **🔧 Coder Low** · Done: settings change implemented and checks passed · verified Sonnet 5.5 / medium
 
 Use **requested** until a transcript or equivalent runtime receipt proves the model and effort. A successful task alone doesn't do that.
 
